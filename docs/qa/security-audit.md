@@ -103,6 +103,15 @@ CRITICAL: 0 / HIGH: 0 / MEDIUM: 1 / LOW: 0
 
 > ADR-001: `Secure`/`HttpOnly`/`SameSite`/CSP 기본값 명시, `/metrics` 내부망 한정.
 
+### A05.0 — envelope 전수 grep 게이트 (반복 이슈 자동 강화, CTO 위임 2026-05-19 15:38)
+
+> envelope 누락이 3회 누적 (PR #3 / PR #4 sweep / PR #5 force-push 회귀) → 본 게이트 자동 강화. 모든 PR 머지 게이트에 포함.
+
+| ID | 점검 항목 | 검증 방법 | 등급 |
+|---|---|---|---|
+| A05-0 | 모든 4xx 응답 본문이 ADR §5.5 envelope `{"error":{"code":"...","message":"..."}}` 형식 준수 | `grep -nE '"error"[[:space:]]*:' src/middleware/*.py src/blueprints/*.py src/services/*.py` 결과의 모든 매치가 `"error": {"code"` 또는 `_err(...)` 헬퍼 호출이어야 함. flat `"error": "..."` 매치 0건 | **HIGH** (1건이라도 누락 시 머지 차단) |
+| A05-0-test | envelope 정합 단위 테스트 — 각 라우트의 대표 4xx 응답에 대해 `error.code` 필드 assertion | `tests/integration/test_*_endpoints.py` 에 라우트별 1건 이상 신규 추가 (PR #5 회귀 사례에서 ruff/pytest 통과 코드에 envelope 회귀 발생 → 자동 게이트 사각지대) | MEDIUM (PR 내 1건 이상 가산 / 부재 시 메모) |
+
 ### A05.a — 보안 헤더 (응답 검증)
 
 `tests/security/headers.spec.ts` 가 모든 HTML 응답 + 대표 JSON 응답에 다음을 검증.
