@@ -65,7 +65,9 @@ class Job(db.Model):
 class JobEvent(db.Model):
     __tablename__ = "job_events"
 
-    id: int = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
+    id: int = db.Column(
+        db.BigInteger().with_variant(db.Integer, "sqlite"), primary_key=True, autoincrement=True
+    )
     job_id: str = db.Column(
         db.String(36), db.ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False
     )

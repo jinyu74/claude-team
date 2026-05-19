@@ -48,9 +48,7 @@ def _record_event(job: Job, user_id: str, event_type: str, event_data: dict) -> 
     """publish_job_event 호출 후 job_events 행을 기록한다."""
     r = get_redis()
     ulid = publish_job_event(r, user_id, job.id, event_type, event_data)
-    # SQLite는 BIGINT PRIMARY KEY를 ROWID로 alias하지 않으므로 명시적 id 생성
-    event_id = uuid.uuid4().int >> 65  # 63비트 양수 정수 (PG/SQLite 공용)
-    db.session.add(JobEvent(id=event_id, job_id=job.id, user_id=user_id, type=event_type, payload=event_data, event_ulid=ulid))  # type: ignore[call-arg]  # noqa: E501
+    db.session.add(JobEvent(job_id=job.id, user_id=user_id, type=event_type, payload=event_data, event_ulid=ulid))  # type: ignore[call-arg]  # noqa: E501
     db.session.commit()
 
 
