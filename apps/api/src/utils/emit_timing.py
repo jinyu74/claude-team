@@ -12,16 +12,23 @@ def maybe_add_emit_at(data: dict) -> dict:
     return {**data, "_emit_at": time.time()}
 
 
-def strip_internal_keys(data: dict, expose_emit_at: bool = False) -> dict:
+def strip_internal_keys(
+    data: dict,
+    expose_emit_at: bool = False,
+    channel: str = "user",
+    is_test_client: bool = False,
+) -> dict:
     """_ 접두사 키를 제거한다.
-    _emit_at: 항상 지연 측정에 사용. expose_emit_at=True (ENABLE_EMIT_AT + X-Perf-Client: test) 시에만 클라이언트에 노출."""
+    _emit_at: is_test_client=True 시에만 Prometheus 기록 + 클라이언트 노출 (ADR §5.4.3)."""
     from src.utils.metrics import sse_emit_to_receive_seconds
 
     emit_at = data.get("_emit_at")
-    if emit_at is not None:
+    if emit_at is not None and is_test_client:
         try:
             latency = time.time() - float(emit_at)
-            sse_emit_to_receive_seconds.observe(latency)
+            sse_emit_to_receive_seconds.labels(
+                channel=channel, client_type="test"
+            ).observe(latency)
         except (ValueError, TypeError):
             pass
 
