@@ -2,7 +2,7 @@
 
 - 최종 갱신: 2026-05-19 by 카맥
 - 상위: [ADR-001](../decisions/ADR-001-architecture.md), [T6](../tasks/T6-perf-carmack.md)
-- 상태: **초안** (구현(T4) 완료 후 실측값으로 대체)
+- 상태: **초안** (§1 환경 명세 실측 반영 완료 / §4 SSE 측정은 Docker 서비스 기동 후 진행 예정)
 
 ---
 
@@ -12,10 +12,10 @@
 
 | 항목 | 값 |
 |---|---|
-| 측정 머신 | Docker Compose 단일 머신 (개발 환경) |
-| CPU | 측정 시 `lscpu` 출력으로 기입 예정 |
-| RAM | 측정 시 `free -h` 출력으로 기입 예정 |
-| OS | 측정 시 `uname -a` 출력으로 기입 예정 |
+| 측정 머신 | Docker Compose 단일 머신 (macOS 개발 환경) |
+| CPU | Apple M3 · 8 vCPU (performance 4 + efficiency 4) |
+| RAM | 24 GB unified memory |
+| OS | Darwin 25.0.0 arm64 (macOS Sequoia) |
 | Redis 버전 | **7.4.2** (CVE-2025-49844 픽스 포함 — R-006) |
 | PostgreSQL 버전 | **16.x** |
 | gunicorn worker 수 | **4** (gevent, `--worker-connections 1000`) |

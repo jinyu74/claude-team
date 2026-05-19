@@ -1,9 +1,11 @@
 # SSE 첫 이벤트 지연 및 push-to-receive 지연 측정 — budget P-02 (SSE p95 < 500ms)
-import time
 import json
-import random
-from locust import HttpUser, task, events
+import random  # noqa: S311 — 부하 테스트 사용자 선택용, 보안 목적 아님
+import time
+from datetime import datetime
+
 from config import TEST_USERS, SSE_FIRST_EVENT_TIMEOUT_MS
+from locust import HttpUser, events, task
 
 
 class SSELatencyUser(HttpUser):
@@ -45,7 +47,6 @@ class SSELatencyUser(HttpUser):
                                     if isinstance(emit_at, dict):
                                         iso = emit_at.get("iso")
                                         if iso:
-                                            from datetime import datetime, timezone
                                             emit_ts = datetime.fromisoformat(
                                                 iso.replace("Z", "+00:00")
                                             ).timestamp()
@@ -62,7 +63,7 @@ class SSELatencyUser(HttpUser):
                                             exception=None,
                                             context={},
                                         )
-                        except Exception:
+                        except Exception:  # noqa: S110 — JSON 파싱 실패는 첫 이벤트 지연 측정을 막지 않음
                             pass
                         resp.success()
                         break
