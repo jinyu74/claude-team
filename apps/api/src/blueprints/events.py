@@ -1,14 +1,16 @@
 # SSE 이벤트 스트림 블루프린트 — /api/events/jobs, /api/events/jobs/:id
-import time
 import json
+import time
+
 import redis as redis_lib
-from flask import Blueprint, request, g, Response
+from flask import Blueprint, Response, g, request
+
 from src.extensions import get_redis
-from src.models.job import Job
 from src.middleware.session import require_auth
-from src.services.sse import format_sse_event, format_keepalive, backfill_from_stream
+from src.models.job import Job
+from src.services.sse import backfill_from_stream, format_keepalive, format_sse_event
+from src.utils.emit_timing import ENABLE_EMIT_AT, strip_internal_keys
 from src.utils.metrics import sse_clients_active, sse_messages_sent_total
-from src.utils.emit_timing import strip_internal_keys, ENABLE_EMIT_AT
 
 bp = Blueprint("events", __name__, url_prefix="/api/events")
 
@@ -21,6 +23,8 @@ def subscribe_jobs_channel(
     user_id: str,
     job_id: str | None = None,
     expose_emit_at: bool = False,
+    channel_type: str = "user",
+    is_test_client: bool = False,
 ):
     """Redis pub/sub 채널 구독 제너레이터 — 테스트에서 패치 가능한 공개 함수."""
     pubsub = r.pubsub()
@@ -34,7 +38,12 @@ def subscribe_jobs_channel(
                 except (json.JSONDecodeError, TypeError):
                     continue
                 event_type = raw.get("type", "unknown")
-                data = strip_internal_keys(raw.get("data", {}), expose_emit_at=expose_emit_at)
+                data = strip_internal_keys(
+                    raw.get("data", {}),
+                    expose_emit_at=expose_emit_at,
+                    channel=channel_type,
+                    is_test_client=is_test_client,
+                )
                 chunk = format_sse_event(event_type, data)
                 sse_messages_sent_total.labels(event_type=event_type).inc()
                 yield chunk
@@ -48,11 +57,18 @@ def subscribe_jobs_channel(
         pubsub.close()
 
 
-def _stream_channel(r: redis_lib.Redis, channel: str, user_id: str, job_id: str | None = None):
+def _stream_channel(
+    r: redis_lib.Redis,
+    channel: str,
+    user_id: str,
+    job_id: str | None = None,
+    channel_type: str = "user",
+):
     """SSE 스트리밍 Response를 반환한다."""
     last_event_id = request.headers.get("Last-Event-ID")
-    # H5: ADR §5.4.3 — 두 조건 모두 충족 시에만 _emit_at 클라이언트 노출
-    expose_emit_at = ENABLE_EMIT_AT and request.headers.get("X-Perf-Client") == "test"
+    # H5: ADR §5.4.3 — 두 조건 모두 충족 시에만 _emit_at 클라이언트 노출 + Prometheus 기록
+    is_test_client = request.headers.get("X-Perf-Client") == "test"
+    expose_emit_at = ENABLE_EMIT_AT and is_test_client
 
     def generate():
         sse_clients_active.inc()
@@ -62,7 +78,12 @@ def _stream_channel(r: redis_lib.Redis, channel: str, user_id: str, job_id: str 
                     sse_messages_sent_total.labels(event_type="backfill").inc()
                     yield chunk
 
-            for chunk in subscribe_jobs_channel(r, channel, user_id, job_id, expose_emit_at=expose_emit_at):
+            for chunk in subscribe_jobs_channel(
+                r, channel, user_id, job_id,
+                expose_emit_at=expose_emit_at,
+                channel_type=channel_type,
+                is_test_client=is_test_client,
+            ):
                 yield chunk
         finally:
             sse_clients_active.dec()
@@ -82,7 +103,7 @@ def _stream_channel(r: redis_lib.Redis, channel: str, user_id: str, job_id: str 
 def jobs_stream():
     r = get_redis()
     channel = f"events:jobs:user:{g.current_user_id}"
-    return _stream_channel(r, channel, g.current_user_id)
+    return _stream_channel(r, channel, g.current_user_id, channel_type="user")
 
 
 @bp.route("/jobs/<job_id>", methods=["GET"])
@@ -93,4 +114,4 @@ def job_detail_stream(job_id: str):
         return {"error": "Not found"}, 404
     r = get_redis()
     channel = f"events:jobs:job:{job_id}"
-    return _stream_channel(r, channel, g.current_user_id, job_id=job_id)
+    return _stream_channel(r, channel, g.current_user_id, job_id=job_id, channel_type="job")

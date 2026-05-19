@@ -34,7 +34,7 @@ class TestMaybeAddEmitAt:
 
 
 class TestStripInternalKeys:
-    def test_strips_underscore_keys_and_records_latency(self):
+    def test_strips_underscore_keys_and_records_latency_for_test_client(self):
         # Arrange
         import src.utils.emit_timing as et
         past = time.time() - 0.05
@@ -46,15 +46,30 @@ class TestStripInternalKeys:
             observed.append(v)
 
         with patch("src.utils.metrics.sse_emit_to_receive_seconds") as mock_hist:
-            mock_hist.observe.side_effect = fake_observe
-            result = et.strip_internal_keys(data)
+            mock_hist.labels.return_value.observe.side_effect = fake_observe
+            result = et.strip_internal_keys(data, channel="user", is_test_client=True)
 
         # Assert
         assert "status" in result
         assert "_emit_at" not in result
         assert "_internal" not in result
+        mock_hist.labels.assert_called_once_with(channel="user", client_type="test")
         assert len(observed) == 1
         assert observed[0] >= 0.04  # 최소 40ms 지연
+
+    def test_no_latency_recorded_for_non_test_client(self):
+        # Arrange
+        import src.utils.emit_timing as et
+        past = time.time() - 0.05
+        data = {"status": "done", "_emit_at": past}
+
+        with patch("src.utils.metrics.sse_emit_to_receive_seconds") as mock_hist:
+            result = et.strip_internal_keys(data, is_test_client=False)
+
+        # Assert
+        assert "status" in result
+        assert "_emit_at" not in result
+        mock_hist.labels.assert_not_called()
 
     def test_no_latency_recorded_without_emit_at(self):
         # Arrange
@@ -62,8 +77,8 @@ class TestStripInternalKeys:
         data = {"status": "pending"}
 
         with patch("src.utils.metrics.sse_emit_to_receive_seconds") as mock_hist:
-            result = et.strip_internal_keys(data)
+            result = et.strip_internal_keys(data, is_test_client=True)
 
         # Assert
         assert result == {"status": "pending"}
-        mock_hist.observe.assert_not_called()
+        mock_hist.labels.assert_not_called()

@@ -1,5 +1,5 @@
 # Prometheus 메트릭 정의 — ADR §7.2 카탈로그 전부
-from prometheus_client import Counter, Histogram, Gauge
+from prometheus_client import Counter, Gauge, Histogram
 
 http_request_duration = Histogram(
     "http_request_duration_seconds",
@@ -46,7 +46,8 @@ sse_messages_sent_total = Counter(
 
 sse_emit_to_receive_seconds = Histogram(
     "sse_emit_to_receive_seconds",
-    "SSE 발행→수신 지연 시간 (ENABLE_EMIT_AT=true 시에만 기록)",
+    "SSE 발행→수신 지연 시간 (테스트 클라이언트 한정 — ADR §5.4.3)",
+    ["channel", "client_type"],
     buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0],
 )
 
