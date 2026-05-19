@@ -88,6 +88,7 @@ PR 본문 코멘트로 다음을 그대로 게시.
 | 2026-05-19 | #4 | hotfix H3-a/H3-b/MEDIUM(2) + H8 | `develop/taskq/hotfix-h3-envelope` → `develop/taskq/v0.1.0` (head SHA `3b84acf1ff540ab2b4e630ada5b0e13968927634`) | ✅ 60 passed, 81.34% cov / ✅ ruff 0 / ✅ pyright 0 / ✅ pip-audit clean (마크 자가 보고) | ✅ A01·A05 정합 (UNAUTHENTICATED/NOT_FOUND envelope) | ✅ SM-1·2 회귀 보강 가능 (H8 test L231 `code == "INVALID_TRANSITION"` assert 추가) | ✅ 시나리오 1 step 3·7 envelope 정합 | 0 | 0 | 0 | 0 | **허용 (PR #4 범위)** | ⑤ head SHA 명시. **정민 진단 보정 — auth.py 3건 envelope 잔존 신규 발견** (PR #4 범위 외) → [상세](#pr-4-상세) |
 | ~~2026-05-19~~ | ~~#5 (1차)~~ | ~~auth-envelope hotfix — H3-c/H3-d/H3-e~~ | ~~head `94436387`~~ | — | — | — | — | 0 | 0 | 0 | 0 | ~~허용~~ | **⑤ 룰 작동 — force-push 후 head 변경 → 재검증으로 회귀 발견 → 통과 무효** ([§PR #5 상세](#pr-5-상세)) |
 | 2026-05-19 | #5 (재검증) | auth-envelope hotfix — H3-c/H3-d/H3-e | `develop/taskq/hotfix-auth-envelope` → `develop/taskq/v0.1.0` (force-push head SHA `9b4a2631a3c833eaadeb02f88b5255381195445f`, 이전 head `94436387` 무효) | ✅ 60 passed, 81.39% cov / ✅ ruff 0 (자동 게이트 통과하나 envelope 회귀를 잡지 못한 한계) | ❌ A07-2 부분 회귀 — session.py·events.py flat envelope 환원 | — | ❌ 시나리오 1 step 7 + 시나리오 7 envelope 회귀 | 0 | **2** | 0 | 0 | **재검증 실패 (회귀)** | base 가 PR #4 (3b84acf) 머지 이전 d7b59d1 에서 분기 → PR #4 envelope 회복 회귀. 마크 rebase 요청 — [상세](#pr-5-상세) |
+| 2026-05-19 | #6 | hotfix v2 — H3-c/H3-d/H3-e (auth.py) + envelope 단위 테스트 5건 + (흡수) docs review-log + ADR §8.1 | `develop/taskq/hotfix-auth-envelope-v2` → `develop/taskq/v0.1.0` (head SHA `9a8484b7b172d9f566b2c006c0805c0deade5f33`) | ✅ 60 passed, 81.39% cov / ✅ ruff 0 / ✅ pip-audit clean | ✅ A07-2 사용자 열거 방어 정합 | — | ✅ 시나리오 1 step 3·7 envelope 정합 + 단위 테스트 5건 회귀 검증 | 0 | 0 | 0 | **1** | **허용 + 머지 완료** | **3축 강화 게이트 통과** (① ancestor ✅ / envelope 6 라우트 ✅ / 단위 테스트 5건 ✅). ⑤ head SHA 일치 후 머지 (CTO 결재 (b) 본문 명시 후 머지, 16:04). v0.1.0 새 HEAD = 9a8484b (merge 2932dad). [상세](#pr-6-상세) |
 | 2026-05-19 | #1 | H5 픽스 — `sse_emit_to_receive_seconds` 라벨 `[channel, client_type]` 추가 + `X-Perf-Client: test` 정확 일치 가드 | `develop/taskq/perf-h5-metric-labels` → `develop/taskq/v0.1.0` | ✅ 59 passed, 81.04% cov / ✅ ruff 0 / ✅ pyright 0 | ✅ A01-9 5층 가드 + 4 환경 매트릭스 충족 (운영/평범/임의헤더/test 모두 정상) | — (영역 외) | #2 `_emit_at` strip 정합 ✅ | 0 | 0 | **1** | **2** | **허용** | [상세](#pr-1-상세) |
 | 2026-05-19 | #2 | E1 픽스 (`_emit_at` float → `{iso, monotonic_ns}` dict) + M1 후속 (`expose_emit_at=True` 단위 테스트) | `develop/taskq/pr3-gate-fixes` → `develop/taskq/v0.1.0` (※ 슬러그 메타 — CTO 별도 권고) | ✅ 60 passed, 81.34% cov / ✅ ruff 0 (src+tests) / ✅ pyright 0 / ⚠️ ruff 4 (load_tests 외부) | ✅ A01-9 4 환경 매트릭스 dict 포맷에서도 유지 (가드 약화 없음) | — (영역 외, SSE-1 무관) | #2 측정 보조 ✅ | 0 | 0 | 0 | **3** | **허용** | [상세](#pr-2-상세) |
 
@@ -601,6 +602,54 @@ ADR §5.5 envelope 카탈로그 (`UNAUTHENTICATED`/`FORBIDDEN`/`CSRF_FAILED`/`VA
 - 반복 이슈 트래커 envelope 누락 항목 — 본 PR 머지 후 line-through 처리 + `audit-envelope-grep` docs PR (security-audit.md A05 envelope 전수 grep 게이트 한 줄 추가) 발행 트리거.
 - 슬러그 `develop/taskq/audit-envelope-grep`. base `develop/taskq/v0.1.0`. 정민 자가 머지 (네이선 §8.1 ⑤ 단계 통과 코멘트 후).
 
+---
+
+### PR #6 상세
+
+**결론.** **머지 허용 + 머지 완료** (2026-05-19 17:34). C0/H0/M0/L1. 3축 강화 게이트 모두 통과. CTO 결재 (b) PR 본문 명시 후 머지 (16:04) 결재 — 마크가 PR 본문에 docs commit (9a8484b) 명시 후 머지 진행.
+
+**검증 시점 head SHA.** `9a8484b7b172d9f566b2c006c0805c0deade5f33`. v0.1.0 새 HEAD = `2932dad` (Merge hotfix-auth-envelope-v2). ⑤ 단계 — 머지 직전 origin head 와 통과 코멘트 SHA 일치 확인 ✅ (마크 보고 17:34).
+
+**3축 강화 게이트.**
+
+| 축 | 명령·결과 |
+|---|---|
+| ① 부모 체인 ancestor | `git merge-base --is-ancestor 3b84acf 9a8484b` → EXIT=0 (PR #4 fix `3b84acf` 보존 ✅, force-push 회귀 차단) |
+| ② envelope 전수 grep 6 라우트 | session.py:26 UNAUTHENTICATED / auth.py L22 VALIDATION_FAILED / L27 UNAUTHENTICATED / L63 NOT_FOUND / events.py:114 NOT_FOUND / jobs.py:28 `_err` 헬퍼 ✅ |
+| ③ envelope 단위 테스트 5건 | `test_auth_endpoints.py` 신규 — wrong_password / unknown_email / missing_fields / logout_without_session / me_without_auth (`error.code` assertion 5건) ✅ |
+
+**자동 게이트.** 60 passed / 81.39% cov / ruff 0 / pip-audit clean / pyright pre-existing venv 이슈만.
+
+**커밋 구조.**
+
+```
+2932dad Merge hotfix-auth-envelope-v2 (v0.1.0 새 HEAD)
+9a8484b docs: review-log PR #3-#5 이력 + ADR-001 §8.1 5단계 룰 등재
+582a0be fix(auth): H3-c/d/e envelope 적용 + envelope 단위 테스트 추가
+3b84acf fix(api): 사후 게이트 H3-a/H3-b/MEDIUM 3건 수정 (PR #4)
+```
+
+- `582a0be` — 마크 코드·테스트 (auth.py +8 / test +10)
+- `9a8484b` — docs commit (review-log +413 / ADR +31) — **정민 워킹 트리 변경분 의도 외 흡수**
+
+#### docs 흡수 사고 — (b) PR 본문 명시 후 머지 (CTO 결재 16:04)
+
+**사건.** PR #6 head `9a8484b` 가 정민 워킹 트리 변경분 (review-log §PR #2/§PR #3 사후/§PR #4/§PR #5/§6.A/§7 거버넌스 갱신 + ADR §8.1 보존본) 을 의도 외 흡수. 마크 PR 본문 보고는 코드 + 테스트만 명시.
+
+**원인.** 모든 멤버 인스턴스가 같은 `jin.yu@vuno.co` git config 로 commit → 한 인스턴스 워킹 트리 변경분이 다른 인스턴스 commit 에 포함 가능 (§6 jin.yu 공통 git config 격리 룰 / §6.B 사고 트리오 3번째).
+
+**결재.** CTO (b) 채택 — 마크에 PR 본문에 docs commit (9a8484b) 명시 요구. PR 본문 수정은 코드 SHA 변경 없음 → §8.1 5단계 통과 SHA `9a8484b7` 유효 유지. (a) revert 거절·(c) docs commit 분리 비권장 — 결과적으로 거버넌스 트레이스가 같은 PR 통합되어 효율적.
+
+**LOW 1.** PR 본문 vs 실제 범위 불일치. CTO 결재 (b) 로 본문 사후 보강·머지. 머지 차단 사유 아님. PR #4 H8 "3건" 메시지 패턴과 동일.
+
+**거버넌스 학습 자산.**
+- 사고 트리오 3번째 — `§6.B` 영구 등재 (슬러그 충돌 / 페인 매핑 / git config 공통)
+- §6 운영 메모 — "jin.yu 공통 git config 격리 룰" 한 줄
+
+**Patch 5 후보 첫 운영 사례.** ① 단계 `git merge-base --is-ancestor 3b84acf 9a8484b` ancestor 검증을 본 PR #6 게이트에서 사실상 첫 운영. 네이선이 ADR 본문 등재 시점에 본 트레이스 인용 가능 (CTO 추인 15:53).
+
+**정민 docs PR 트랙 무효화.** `docs/taskq/adr-patch4-and-reviewlog-cross-ref` 브랜치가 PR #6 의 9a8484b 흡수로 별도 발행 불필요. 본 PR (`governance-rollup-v0.1.0`) 에서 누락 등재 일괄 보강.
+
 ## 2. 영역별 게이트 적용 표
 
 > 본 표의 모든 PR 은 base = `develop/taskq/v0.1.0`, head = `develop/taskq/<slug>`. v0.1.0 → `main` 머지 PR 은 별도 릴리스 게이트.
@@ -688,6 +737,7 @@ ADR §5.5 envelope 카탈로그 (`UNAUTHENTICATED`/`FORBIDDEN`/`CSRF_FAILED`/`VA
 - MEDIUM/LOW 후속은 Jira Sub-task 생성 후 비고 컬럼에 키 기록.
 - 분기 검토 — 반복 이슈 트래커가 3회 이상인 유형은 분기 회고에 안건으로 올린다.
 - **발신자 식별 규약** (2026-05-19 15:21 CTO 정정 + 15:23 CTO 추인). tmux 페인 매핑이 일시 어긋날 수 있으므로 `team-send` 의 `[From: X → Y]` 헤더만 신뢰하지 않는다. **본문 첫 줄의 라벨 — `[CTO 제임스 ...]`, `[From: 마크 → 정민]`, `[결과] ...` 등 — 이 1차 SSOT**. 헤더와 본문 라벨이 다르면 본문 라벨 기준으로 응답. 본 규약은 페인 매핑 정정 전까지 유효. CTO 추인 메모 — "정민이 그동안 게이트 운영 회신에서 이미 본문 라벨 기준으로 발신자 식별 — 사고 발생 이전부터 자율 적용된 우수 패턴".
+- **jin.yu 공통 git config 격리 룰** (2026-05-19 16:04 CTO 추인, PR #6 docs 흡수 사고 학습). 모든 멤버 인스턴스가 같은 `jin.yu@vuno.co` git user 로 커밋하므로 한 인스턴스의 워킹 트리 변경분이 다른 인스턴스의 commit 에 의도 외 흡수될 수 있다. **docs 작업은 git worktree 격리 또는 명시적 stash 격리 + 명시적 별도 브랜치 checkout 후 즉시 commit 후 진행**. 정민의 `adr-patch4-and-reviewlog-cross-ref` 트랙이 PR #6 의 9a8484b commit 으로 흡수되어 자동 무효화된 사건이 본 룰의 트리거.
 
 ### 6.A 진단 자가 보정 누적
 
@@ -699,6 +749,7 @@ ADR §5.5 envelope 카탈로그 (`UNAUTHENTICATED`/`FORBIDDEN`/`CSRF_FAILED`/`VA
 | 2 | 2026-05-19 15:34 | **PR #3 사후 게이트 envelope 영역 부분 grep** — `src/{middleware,blueprints}/**/*.py` 자가 규칙 명시했음에도 본문에 jobs+session+events 만 보고. PR #4 게이트 시 전수 grep 으로 auth.py 3건 정정 발견 | [§PR #4 상세](#pr-4-상세) §정민 진단 보정 |
 | 3 | 2026-05-19 15:34 | **PR #4 마크 커밋 메시지 "3건" 검증** — 실제 H8 도 해결됨 (test L231). 메시지·코드 불일치를 게이트 결과에 정직 기록 | [§PR #4 상세](#pr-4-상세) H8 행 |
 | 4 | 2026-05-19 15:48 | **PR #5 1차 검증 시 부모 체인 미검증** — 다중 hotfix 시퀀스 (PR #4 → PR #5) 에서 `git merge-base --is-ancestor` 로 직전 PR HEAD 가 현재 PR 부모 체인에 포함되는지 확인했어야 함. 1차 검증 시점에는 정합했으나 force-push 가능성을 사전 차단 못 함. ⑤ 단계 룰이 사후 검출 | [§PR #5 상세](#pr-5-상세) §원인·진단 자가 보정 누적 — 4번째 |
+| 5 | 2026-05-19 17:34 | **PR #6 게이트 시 워킹 트리 격리 사전 수행 누락** — 정민의 워킹 트리에 적재된 docs 변경분이 마크 PR #6 의 9a8484b commit 으로 의도 외 흡수. 정민이 PR #6 게이트 가동 직전 git worktree 또는 stash 격리를 사전 수행하지 않은 점. CTO 통지 (b) 본문 명시 후 머지로 사후 보정. | [§PR #6 상세](#pr-6-상세) §docs 흡수 사고 + §6.B 사고 트리오 |
 
 **진단 자가 규칙 누적 (보정에서 파생한 운영 규칙)**
 
@@ -707,6 +758,19 @@ ADR §5.5 envelope 카탈로그 (`UNAUTHENTICATED`/`FORBIDDEN`/`CSRF_FAILED`/`VA
 - 커밋 메시지 의 변경 건수와 실제 코드/테스트 변경 일치 검증 (PR #4 보정)
 - **다중 hotfix 시퀀스에서 부모 체인 검증 의무** — `git merge-base --is-ancestor <prev-PR-head> <current-PR-head>` 가 EXIT=0 인지 ① 단계와 ⑤ 단계 모두에서 확인 (PR #5 회귀 보정)
 - **인터페이스 정합 회귀 차단을 위한 단위 테스트 의무** — envelope·event 카탈로그·메트릭 라벨처럼 자동 게이트 (ruff/pytest/coverage 합산) 가 잡지 못하는 도메인은 라우트·필드 일관성을 직접 검증하는 단위 테스트가 필수. PR #5 회귀 사례에서 ruff/pytest 통과한 코드에 envelope 회귀가 있었음 (CTO 통지 2026-05-19 15:57)
+- **공통 git config 환경의 워킹 트리 격리 의무** — `jin.yu@vuno.co` 공통 config 환경에서 docs/거버넌스 작업은 git worktree 또는 명시적 stash 격리 + 즉시 commit 후 진행. PR #6 의 9a8484b 가 정민 워킹 트리 변경분 흡수한 사건 학습 (CTO 추인 2026-05-19 16:04)
+
+### 6.B 거버넌스 학습 사고 트리오 (운영 환경 진입 시 룰 강화 권고)
+
+> CTO 통지 2026-05-19 16:04 — 시범 프로젝트의 산출. 동일 패턴이 다른 팀·다른 프로젝트에 이식될 때 사전 차단 권고. 운영 환경 진입 시 ADR 또는 별도 `governance.md` 로 격상 (CTO 통지 2026-05-19 17:34).
+
+| # | 사고 | 패턴 | 트리거 PR | 차후 룰 |
+|---|---|---|---|---|
+| 1 | 슬러그 충돌 (동시 작업) | `develop/taskq/pr3-gate-fixes` 가 카맥 PR #2 와 마크 PR #3 작업에서 동시 사용 → v0.1.0 머지 시 정민 미검증 fix(7fef3db) 흡수 | PR #2 ↔ PR #3 | §0 박스 — 슬러그 PR 별 고유 룰 (CTO 추인 15:09) |
+| 2 | 페인 매핑 표류 | tmux 페인 매핑 헤더가 실제 발신자와 어긋남 (CTO 인스턴스가 페인 5 에 위치) | 페인 매핑 사고 (15:21) | §6 발신자 식별 규약 — 본문 첫 줄 라벨 1차 SSOT |
+| 3 | jin.yu 공통 git config 흡수 | 워킹 트리 변경분이 다른 인스턴스 commit 에 흡수 | PR #6 docs commit 9a8484b 가 정민 docs 트랙 흡수 | §6 jin.yu 공통 git config 격리 룰 (본 절) |
+
+세 사고 모두 **공통 인스턴스 운영 환경의 격리 부재** 가 근본 원인. 운영 환경 진입 시 (1) 멤버별 git user 분리, (2) 페인 매핑 자동 검증, (3) 슬러그 정책 자동 검사 CI 권고.
 
 ## 7. 거버넌스 SSOT 누적
 
@@ -718,4 +782,5 @@ ADR §5.5 envelope 카탈로그 (`UNAUTHENTICATED`/`FORBIDDEN`/`CSRF_FAILED`/`VA
 | 2 | 슬러그 PR 별 고유·동시 작업 금지 (재사용은 머지 완료 후) | 본 review-log §0 박스 | CTO 2026-05-19 15:09 (PR #2 우회 통합 사고 재발 방지) |
 | 3 | 페인 헤더 vs 본문 라벨 SSOT — 본문 첫 줄 라벨이 1차 | 본 review-log §6 (정민 자율 등재) | CTO 2026-05-19 15:21 정정 + 15:23 추인 |
 | 4 | _(예정)_ PR 본문 `author-role: <role>` 라벨 강제 | _(미등재)_ — 후속 review-log 갱신 시점에 §0 또는 별도 절 | 네이선 권고, 정민 자율 시점 발효 |
-| 5 | _(Patch 5 후보)_ §8.1 ① 단계 강화 — 다중 hotfix 시퀀스에서 `git merge-base --is-ancestor <prev-PR-head> <current-PR-head>` 사전 검증 의무 | _(미등재)_ — 1차 SSOT 는 ADR-001 §8.1 ① 절 한 줄 추가 (네이선 영역). 2차는 본 review-log §6.A 진단 자가 규칙 누적 4번째 (이미 등재) | CTO 추인 2026-05-19 15:53 — 네이선 자율 시점 ADR 본문 추가 또는 정민 cross-ref docs PR 묶음 |
+| 5 | _(Patch 5 후보)_ §8.1 ① 단계 강화 — 다중 hotfix 시퀀스에서 `git merge-base --is-ancestor <prev-PR-head> <current-PR-head>` 사전 검증 의무 | _(미등재)_ — 1차 SSOT 는 ADR-001 §8.1 ① 절 한 줄 추가 (네이선 영역). 2차는 본 review-log §6.A 진단 자가 규칙 누적 4번째 (이미 등재). **본 PR #6 게이트에서 첫 운영 사례** | CTO 추인 2026-05-19 15:53 — 네이선 자율 시점 ADR 본문 추가 또는 정민 cross-ref docs PR 묶음 |
+| 6 | 거버넌스 학습 사고 트리오 (슬러그 충돌 / 페인 매핑 / git config 공통) — 공통 인스턴스 운영 환경의 격리 부재 근본 원인 + 운영 환경 진입 시 (1) 멤버별 git user 분리, (2) 페인 매핑 자동 검증, (3) 슬러그 정책 자동 검사 CI 권고 | 본 review-log §6.B (1차 SSOT). 운영 환경 진입 시 ADR 또는 별도 `governance.md` 격상 권고 | CTO 통지 2026-05-19 16:04 + 17:34 |
