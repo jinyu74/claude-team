@@ -41,9 +41,20 @@ class SSELatencyUser(HttpUser):
                                 if line.startswith("data:"):
                                     data = json.loads(line[5:].strip())
                                     emit_at = data.get("_emit_at")
-                                    if emit_at:
-                                        push_to_receive_ms = (time.time() - float(emit_at)) * 1000
-                                        events.request.fire(
+                                    # ADR §5.4.3: _emit_at 은 {iso, monotonic_ns} dict
+                                    if isinstance(emit_at, dict):
+                                        iso = emit_at.get("iso")
+                                        if iso:
+                                            from datetime import datetime, timezone
+                                            emit_ts = datetime.fromisoformat(
+                                                iso.replace("Z", "+00:00")
+                                            ).timestamp()
+                                            push_to_receive_ms = (time.time() - emit_ts) * 1000
+                                        else:
+                                            continue
+                                    else:
+                                        continue
+                                    events.request.fire(
                                             request_type="SSE",
                                             name="/api/events/jobs [push-to-receive]",
                                             response_time=push_to_receive_ms,
