@@ -537,6 +537,36 @@ ADR-001 확정 이후 **§4 데이터 모델 / §5 API / §6 인증** 의 변경
 
 §7 관측성·§3 큐 모델 내부 디테일은 ADR 수정 대상이 아니며 코드 변경으로 진행 가능 (단, 새 메트릭/이벤트 추가 시 §7.2 / §5.4 표 갱신 필수).
 
+### 8.1 §8 게이트키퍼 운영 규칙 — 5단계 (정식 채택, 2026-05-19)
+
+네이선이 PR 검증 시 적용하는 5단계 규칙. 본 시범 프로젝트의 핵심 거버넌스 산출물.
+
+| 단계 | 점검 | 트리거 시 행동 |
+|---|---|---|
+| ① | **`interface-change` 라벨** 부착 여부 | 라벨 + 휴리스틱(②) 어느 쪽이라도 참이면 ② 진행 |
+| ② | **§4·§5·§6 경로 휴리스틱** — `apps/api/.../models/`, `.../sse/`, `.../auth/`, `.../utils/metrics.py`, `.../utils/emit_timing.py`, `.../blueprints/events.py` 등 매핑 경로 변경 감지 | 정합 점검 진행 (③) |
+| ③ | **컨텍스트 라인 검증 패턴** — 변경 diff 의 unchanged surrounding lines 까지 ADR 정합 점검 | 스코프 외 부정합 발견 시 통과 코멘트 + 별도 관찰 명시 + 별도 H/PR 트래킹 권고 (게이트 차단 사유 아님) |
+| ④ | **SSOT 트레이스** — `docs/tasks/T*.md` (위임) ↔ `docs/qa/inspection-*.md` (검수) ↔ ADR-001 본문/패치 노트 일관성 확인 | 호환 변경: 패치 노트 추가 / 비호환 변경: ADR-002 발행 요구 |
+| ⑤ | **머지 직전 head SHA 일치 검증** | 통과 코멘트 본문에 **검증 시점 head SHA 명시**. 머지 직전 PR head SHA 와 불일치 시 **통과 무효 + 재검증 요구** |
+
+#### 운영 환경 격상 권고
+
+시범 환경에서는 ⑤ 가 인적 검증(머지 책임자가 통과 코멘트의 SHA 와 머지 시점 SHA 비교) 으로 충분. 운영 환경 진입 시 GitHub branch protection 의 **"Require approvals on the most recent push"** + **"Require status checks to pass after re-push"** 로 자동화 격상.
+
+#### 통과 코멘트 표준 형식
+
+PR 코멘트 최상단에 다음 두 줄을 고정 포함한다 — 머지 책임자가 ⑤ 단계를 수행할 수 있도록.
+
+```
+검증자: 네이선 (Architect) · 검증일: YYYY-MM-DD HH:MM · 기준: ADR-001 §<해당 절>
+검증 시점 head SHA: <full 40-char SHA>
+```
+
+#### SSOT 등재 위치
+
+- **ADR-001 §8.1 (본 절)** — 1차 SSOT.
+- `docs/qa/review-log.md §0` 박스 — 정민 영역 cross-reference (네이선 → 정민 위임).
+
 ---
 
 ## OWASP Top 10 (2021) 한 줄 매핑
@@ -580,6 +610,7 @@ ADR-001 확정 이후 **§4 데이터 모델 / §5 API / §6 인증** 의 변경
 
 ## 패치 노트
 
+- **2026-05-19 15:15 — Patch 4 (네이선)**: §8 게이트키퍼 운영 규칙 5단계 영구 등재(§8.1 신설). CTO 추인(2026-05-19 15:11) 반영. 핵심 거버넌스 SSOT — 통과 코멘트 표준 형식(검증자/검증일/기준/검증 시점 head SHA 2줄) + 운영 환경 격상 권고(branch protection "Require approvals on the most recent push" + "Require status checks to pass after re-push"). docs/qa/review-log.md §0 박스 cross-reference 는 정민 위임. 호환 변경(본문 추가만).
 - **2026-05-19 13:58 — Patch 2 + 3 (네이선, 동일 PR 묶음)**: T6(카맥) `_emit_at` 측정 훅 + 정민 SM-4 회귀 명세 수동 retry 정책. 모두 호환 변경.
   - **Patch 2 (`_emit_at`)**: §5.4.3 신설(필드·포맷·다층 가드 5층·마크 구현 분기). §7.2 에 `sse_emit_to_receive_seconds` 히스토그램 추가(테스트 빌드 한정, `client_type=test` 라벨). §1.2 흐름 7번 추가. OWASP A01·A09 한 줄 보강(타이밍 측면 채널·로그 사이드채널 차단). 노출 AND 조건: `ENABLE_EMIT_AT=true` ∧ `X-Perf-Client: test`. 출처: `docs/performance/baseline.md §4.1`, `docs/qa/inspection-T6-carmack.md`.
   - **Patch 3 (수동 retry 정책)**: §3.2 를 자동(Celery)/수동(PATCH) 으로 분할하고 허용 상태(`failed`/`canceled`) · 거부 상태(`succeeded` → `409 INVALID_TRANSITION`) 명시. §4.3 상태 머신에 종결 상태별 액션 표 추가. §5.1 PATCH 비고 갱신. 오류 코드 카탈로그에 `INVALID_TRANSITION` 추가. `succeeded` 재실행은 후속 ADR 의 `clone` 액션으로 분리(M1 외). 출처: `docs/qa/scenarios.md SM-4`.
