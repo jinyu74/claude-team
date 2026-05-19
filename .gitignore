@@ -1,0 +1,65 @@
+# 실시간 작업 큐 대시보드 — 시범 프로젝트 (taskq)
+# OS / 에디터 / 로컬 메타
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Claude Code 로컬 메타 (팀 페인 셋업·세션)
+.claude/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyright_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.tox/
+.nox/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Node / Frontend
+node_modules/
+.vite/
+.next/
+.nuxt/
+.svelte-kit/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# 환경 변수 (NEVER commit)
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# 부하 테스트 결과 (큰 산출물은 git 외부 보관)
+results/
+load_tests/results/
+
+# Docker 로컬 데이터
+**/postgres_data/
+**/redis_data/
+
+# 임시 / 산출
+tmp/
+*.bak
+*.orig
