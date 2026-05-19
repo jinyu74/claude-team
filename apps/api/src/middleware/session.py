@@ -23,6 +23,7 @@ def require_auth(f):
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
         if not g.get("current_user_id"):
-            return jsonify({"error": "Unauthorized"}), 401
+            body = {"error": {"code": "UNAUTHENTICATED", "message": "authentication required"}}
+            return jsonify(body), 401
         return f(*args, **kwargs)
     return wrapper

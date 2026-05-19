@@ -3,7 +3,7 @@ import json
 import time
 
 import redis as redis_lib
-from flask import Blueprint, Response, g, request
+from flask import Blueprint, Response, g, jsonify, request
 
 from src.extensions import get_redis
 from src.middleware.session import require_auth
@@ -111,7 +111,7 @@ def jobs_stream():
 def job_detail_stream(job_id: str):
     job = Job.query.filter_by(id=job_id, user_id=g.current_user_id).first()
     if not job:
-        return {"error": "Not found"}, 404
+        return jsonify({"error": {"code": "NOT_FOUND", "message": "job not found"}}), 404
     r = get_redis()
     channel = f"events:jobs:job:{job_id}"
     return _stream_channel(r, channel, g.current_user_id, job_id=job_id, channel_type="job")
