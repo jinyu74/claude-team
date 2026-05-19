@@ -45,7 +45,7 @@ def subscribe_jobs_channel(
                     is_test_client=is_test_client,
                 )
                 chunk = format_sse_event(event_type, data)
-                sse_messages_sent_total.labels(event_type=event_type).inc()
+                sse_messages_sent_total.labels(channel=channel_type, event=event_type).inc()
                 yield chunk
 
             now = time.time()
@@ -75,7 +75,7 @@ def _stream_channel(
         try:
             if last_event_id:
                 for chunk in backfill_from_stream(r, last_event_id, user_id, job_id):
-                    sse_messages_sent_total.labels(event_type="backfill").inc()
+                    sse_messages_sent_total.labels(channel=channel_type, event="backfill").inc()
                     yield chunk
 
             for chunk in subscribe_jobs_channel(

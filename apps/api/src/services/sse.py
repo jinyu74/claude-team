@@ -1,8 +1,10 @@
 # SSE 이벤트 직렬화·구독·백필 서비스 — ADR §6
 import json
 import time
+
 import redis as redis_lib
 from ulid import ULID
+
 from src.utils.emit_timing import maybe_add_emit_at
 
 STREAM_KEY_JOBS = "stream:events:jobs"
@@ -70,8 +72,8 @@ def publish_job_event(
         "ulid": ulid, "type": event_type, "data": payload,
         "user_id": user_id, "job_id": job_id,
     }
-    pipe.xadd(STREAM_KEY_JOBS, entry, maxlen=STREAM_MAXLEN, approximate=True)
-    pipe.xadd(STREAM_KEY_JOB.format(job_id=job_id), entry, maxlen=500, approximate=True)
+    pipe.xadd(STREAM_KEY_JOBS, entry, maxlen=STREAM_MAXLEN, approximate=True)  # type: ignore[arg-type]
+    pipe.xadd(STREAM_KEY_JOB.format(job_id=job_id), entry, maxlen=500, approximate=True)  # type: ignore[arg-type]
     pipe.execute()
     return ulid
 
@@ -92,7 +94,7 @@ def backfill_from_stream(
         return []
 
     result = []
-    for stream_id, fields in entries:
+    for stream_id, fields in entries:  # type: ignore[union-attr]
         if stream_id.decode() == last_event_id:
             continue
         ts_part = int(stream_id.decode().split("-")[0])

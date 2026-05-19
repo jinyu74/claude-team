@@ -1,6 +1,7 @@
 # 사용자 모델 — ADR §4.1 users 테이블
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 from src.extensions import db
 
 
@@ -11,7 +12,7 @@ class User(db.Model):
     email: str = db.Column(db.Text, nullable=False, unique=True)
     password_hash: str = db.Column(db.Text, nullable=False)
     created_at: datetime = db.Column(
-        db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
     )
 
     jobs = db.relationship("Job", back_populates="user", lazy="dynamic")

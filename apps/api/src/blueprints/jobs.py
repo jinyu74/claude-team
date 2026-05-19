@@ -1,21 +1,23 @@
 # 잡 블루프린트 — ADR §5.1 엔드포인트 구현
-from flask import Blueprint, request, jsonify, g
-from src.extensions import db, get_redis
-from src.models.job import Job
-from src.services.job import create_job, transition_job, ConflictError
-from src.middleware.session import require_auth
-from src.middleware.csrf import validate_csrf_token
-from src.worker.celery_app import celery as celery_app
 import functools
 import uuid
+
+from flask import Blueprint, g, jsonify, request
+
+from src.extensions import db, get_redis
+from src.middleware.csrf import validate_csrf_token
+from src.middleware.session import require_auth
+from src.models.job import Job
+from src.services.job import ConflictError, create_job, transition_job
+
+# 테스트에서 src.blueprints.jobs.submit_job_task 로 패치 가능
+from src.worker.celery_app import celery as celery_app
+from src.worker.tasks import dummy_sleep as submit_job_task  # noqa: E402
 
 bp = Blueprint("jobs", __name__, url_prefix="/api/jobs")
 
 PAGE_SIZE_DEFAULT = 20
 PAGE_SIZE_MAX = 100
-
-# Celery 태스크 참조 — 테스트에서 src.blueprints.jobs.submit_job_task 로 패치 가능
-from src.worker.tasks import dummy_sleep as submit_job_task
 
 # H4: apply_async 에 허용하는 kwargs 키 목록
 _TASK_KWARGS_WHITELIST = frozenset(["seconds", "fail_prob"])
@@ -49,7 +51,9 @@ def submit_job():
 
     payload = data.get("payload", {}) or {}
     priority = int(data.get("priority", 0))
-    idempotency_key = request.headers.get("Idempotency-Key") or data.get("idempotency_key", "")
+    idempotency_key = (
+        request.headers.get("Idempotency-Key") or data.get("idempotency_key", "")
+    )
     if not idempotency_key:
         return jsonify(_err("VALIDATION_FAILED", "Idempotency-Key required")), 422
 
@@ -62,13 +66,16 @@ def submit_job():
             idempotency_key=idempotency_key,
         )
     except ConflictError:
-        return jsonify(_err("CONFLICT", "concurrent submission detected, retry shortly")), 409
+        return (
+            jsonify(_err("IDEMPOTENCY_CONFLICT", "concurrent submission detected, retry shortly")),
+            409,
+        )
 
     if created:
         queue = "high" if priority > 0 else "default"
         # H4: 사용자 페이로드를 whitelist 로 필터링 후 전달
         safe_kwargs = {k: v for k, v in payload.items() if k in _TASK_KWARGS_WHITELIST}
-        result = submit_job_task.apply_async(kwargs=safe_kwargs, queue=queue)
+        result = submit_job_task.apply_async(kwargs=safe_kwargs, queue=queue)  # type: ignore[union-attr]
         job.celery_task_id = result.id
         db.session.commit()
 
@@ -86,7 +93,7 @@ def list_jobs():
     q = Job.query.filter_by(user_id=g.current_user_id)
     if status_filter:
         q = q.filter_by(status=status_filter)
-    q = q.order_by(Job.created_at.desc())
+    q = q.order_by(Job.created_at.desc())  # type: ignore[union-attr]
 
     total = q.count()
     items = q.offset((page - 1) * per_page).limit(per_page).all()
@@ -121,7 +128,10 @@ def update_job(job_id: str):
     # H1: {status: "canceled"} — ADR §5.1 준수
     if data.get("status") == "canceled":
         if job.status not in ("pending", "running"):
-            return jsonify(_err("INVALID_TRANSITION", f"Cannot cancel job in status '{job.status}'")), 409
+            return (
+                jsonify(_err("INVALID_TRANSITION", f"Cannot cancel job in status '{job.status}'")),
+                409,
+            )
         if job.celery_task_id:
             celery_app.control.revoke(job.celery_task_id, terminate=True)
         job = transition_job(job, "canceled")
@@ -142,8 +152,10 @@ def update_job(job_id: str):
         )
         job.retried_to_job_id = new_job.id
         db.session.commit()
-        safe_kwargs = {k: v for k, v in (new_job.payload or {}).items() if k in _TASK_KWARGS_WHITELIST}
-        result = submit_job_task.apply_async(kwargs=safe_kwargs, queue="default")
+        safe_kwargs = {
+            k: v for k, v in (new_job.payload or {}).items() if k in _TASK_KWARGS_WHITELIST
+        }
+        result = submit_job_task.apply_async(kwargs=safe_kwargs, queue="default")  # type: ignore[union-attr]
         new_job.celery_task_id = result.id
         db.session.commit()
         return jsonify(new_job.to_dict()), 201

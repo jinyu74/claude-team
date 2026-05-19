@@ -1,6 +1,7 @@
 # 작업·이벤트 모델 — ADR §4.1 jobs / job_events 테이블
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 from src.extensions import db
 
 JOB_STATUSES = ("pending", "running", "succeeded", "failed", "canceled")
@@ -27,7 +28,7 @@ class Job(db.Model):
         db.String(36), db.ForeignKey("jobs.id"), nullable=True
     )
     created_at: datetime = db.Column(
-        db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
     )
     started_at: datetime | None = db.Column(db.DateTime(timezone=True), nullable=True)
     finished_at: datetime | None = db.Column(db.DateTime(timezone=True), nullable=True)
@@ -73,7 +74,7 @@ class JobEvent(db.Model):
     payload: dict = db.Column(db.JSON, nullable=False, default=dict)
     event_ulid: str = db.Column(db.Text, nullable=False, unique=True)
     created_at: datetime = db.Column(
-        db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
     )
 
     job = db.relationship("Job", back_populates="events")

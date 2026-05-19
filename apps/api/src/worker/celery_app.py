@@ -1,5 +1,6 @@
 # Celery 앱 설정 — Flask 앱 컨텍스트 연동
 from celery import Celery
+
 from src.config import Config
 
 

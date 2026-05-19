@@ -1,7 +1,8 @@
 # 구조화 JSON 로그 설정 — ADR §7.1 필수 필드
 import logging
+
 import structlog
-from flask import g, request, has_request_context
+from flask import g, has_request_context, request
 
 
 def add_request_context(logger, method, event_dict):

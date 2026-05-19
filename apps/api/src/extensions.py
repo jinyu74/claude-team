@@ -1,6 +1,6 @@
 # 전역 확장 객체 — SQLAlchemy, Redis 클라이언트
-from flask_sqlalchemy import SQLAlchemy
 import redis as redis_lib
+from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
 

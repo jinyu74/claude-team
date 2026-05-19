@@ -1,8 +1,9 @@
 # 잡 서비스 — 생성·상태 전환·Redis 발행
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 from src.extensions import db, get_redis
-from src.models.job import Job, JobEvent, JOB_STATUSES
+from src.models.job import JOB_STATUSES, Job, JobEvent
 from src.services.sse import publish_job_event
 from src.utils.idempotency import acquire_idempotency_lock
 
@@ -33,7 +34,7 @@ class ConflictError(Exception):
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _event_payload(event_type: str, job: Job) -> dict:
@@ -47,13 +48,9 @@ def _record_event(job: Job, user_id: str, event_type: str, event_data: dict) -> 
     """publish_job_event 호출 후 job_events 행을 기록한다."""
     r = get_redis()
     ulid = publish_job_event(r, user_id, job.id, event_type, event_data)
-    db.session.add(JobEvent(
-        job_id=job.id,
-        user_id=user_id,
-        type=event_type,
-        payload=event_data,
-        event_ulid=ulid,
-    ))
+    # SQLite는 BIGINT PRIMARY KEY를 ROWID로 alias하지 않으므로 명시적 id 생성
+    event_id = uuid.uuid4().int >> 65  # 63비트 양수 정수 (PG/SQLite 공용)
+    db.session.add(JobEvent(id=event_id, job_id=job.id, user_id=user_id, type=event_type, payload=event_data, event_ulid=ulid))  # type: ignore[call-arg]  # noqa: E501
     db.session.commit()
 
 
@@ -73,15 +70,7 @@ def create_job(
         # lock 실패 + DB 미존재 → 동시 INSERT 경합 중 (H2)
         raise ConflictError("concurrent submission on the same idempotency key")
 
-    job = Job(
-        id=str(uuid.uuid4()),
-        user_id=user_id,
-        type=job_type,
-        payload=payload,
-        priority=priority,
-        idempotency_key=idempotency_key,
-        status="pending",
-    )
+    job = Job(id=str(uuid.uuid4()), user_id=user_id, type=job_type, payload=payload, priority=priority, idempotency_key=idempotency_key, status="pending")  # type: ignore[call-arg]  # noqa: E501
     db.session.add(job)
     db.session.commit()
 

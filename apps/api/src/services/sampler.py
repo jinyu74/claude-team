@@ -1,8 +1,10 @@
 # 큐 상태 샘플러 — 단일 리더 락 + Prometheus 게이지 갱신
-import time
 import threading
+import time
+
 import redis as redis_lib
-from src.models.job import Job, JOB_STATUSES
+
+from src.models.job import JOB_STATUSES, Job
 from src.utils.metrics import job_queue_length, queue_emitter_leader
 
 LEADER_KEY = "heartbeat:queue_emitter"

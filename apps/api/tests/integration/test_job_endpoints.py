@@ -1,5 +1,4 @@
 # 작업 엔드포인트 통합 테스트 — 제출·조회·취소·재시도
-import pytest
 import uuid
 from unittest.mock import patch
 
@@ -10,7 +9,7 @@ def login_user(client, email, password):
     return resp.get_json()["csrf_token"]
 
 
-def make_user(app, email="jobs@example.com", password="pass-123"):
+def make_user(app, email="jobs@example.com", password="pass-123"):  # noqa: S107
     from src.extensions import db
     from src.models.user import User
     from src.services.auth import hash_password
@@ -197,15 +196,15 @@ class TestJobCancel:
         with patch("src.blueprints.jobs.celery_app.control.revoke"):
             resp = client.patch(
                 f"/api/jobs/{job_id}",
-                json={"action": "cancel"},
+                json={"status": "canceled"},  # H1: ADR §5.1 — {status: "canceled"}
                 headers={"X-CSRF-Token": csrf},
             )
         assert resp.status_code == 200
         assert resp.get_json()["status"] == "canceled"
 
     def test_cancel_already_canceled_job_returns_409(self, client, app):
-        from src.services.job import transition_job
         from src.models.job import Job
+        from src.services.job import transition_job
 
         make_user(app, "cancel2@example.com")
         csrf = login_user(client, "cancel2@example.com", "pass-123")
@@ -225,10 +224,11 @@ class TestJobCancel:
 
         resp = client.patch(
             f"/api/jobs/{job_id}",
-            json={"action": "cancel"},
+            json={"status": "canceled"},  # H1: ADR §5.1 준수
             headers={"X-CSRF-Token": csrf},
         )
         assert resp.status_code == 409
+        assert resp.get_json()["error"]["code"] == "INVALID_TRANSITION"  # H8: code 필드 위치
 
 
 class TestJobRetry:
@@ -243,8 +243,8 @@ class TestJobRetry:
         return resp.get_json()["id"]
 
     def test_retry_failed_job_returns_new_job(self, client, app):
-        from src.services.job import transition_job
         from src.models.job import Job
+        from src.services.job import transition_job
 
         make_user(app, "retry1@example.com")
         csrf = login_user(client, "retry1@example.com", "pass-123")
@@ -269,8 +269,8 @@ class TestJobRetry:
         assert new_data["status"] == "pending"
 
     def test_retry_succeeded_job_returns_409(self, client, app):
-        from src.services.job import transition_job
         from src.models.job import Job
+        from src.services.job import transition_job
 
         make_user(app, "retry2@example.com")
         csrf = login_user(client, "retry2@example.com", "pass-123")
@@ -288,7 +288,7 @@ class TestJobRetry:
             headers={"X-CSRF-Token": csrf},
         )
         assert resp.status_code == 409
-        assert resp.get_json()["code"] == "INVALID_TRANSITION"
+        assert resp.get_json()["error"]["code"] == "INVALID_TRANSITION"
 
     def test_retry_pending_job_returns_409(self, client, app):
         make_user(app, "retry3@example.com")
@@ -301,4 +301,4 @@ class TestJobRetry:
             headers={"X-CSRF-Token": csrf},
         )
         assert resp.status_code == 409
-        assert resp.get_json()["code"] == "INVALID_TRANSITION"
+        assert resp.get_json()["error"]["code"] == "INVALID_TRANSITION"

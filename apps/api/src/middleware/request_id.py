@@ -1,6 +1,7 @@
 # X-Request-Id 요청 ID 미들웨어
 import uuid
-from flask import g, request, Response
+
+from flask import Response, g, request
 
 
 def inject_request_id() -> None:

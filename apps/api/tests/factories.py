@@ -1,5 +1,6 @@
 # 테스트 팩토리 — User, Job 모델 인스턴스 생성
 import factory
+
 from src.models.user import User
 from src.services.auth import hash_password
 

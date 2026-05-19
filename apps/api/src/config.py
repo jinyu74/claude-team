@@ -28,5 +28,5 @@ class TestingConfig(Config):
     TESTING = True
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
     SESSION_COOKIE_SECURE = False
-    SECRET_KEY = "test-secret-key"
+    SECRET_KEY = "test-secret-key"  # noqa: S105
     REDIS_URL = "redis://localhost:6379/0"

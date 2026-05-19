@@ -1,6 +1,6 @@
 # Prometheus 메트릭 엔드포인트 — GET /metrics
 from flask import Blueprint, Response
-from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 bp = Blueprint("metrics", __name__)
 

@@ -1,5 +1,4 @@
 # emit_timing 헬퍼 단위 테스트 — ADR §5.4.3 Patch 2
-import time
 from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
@@ -43,7 +42,8 @@ class TestStripInternalKeys:
         # Arrange — ADR §5.4.3: _emit_at 은 dict {iso, monotonic_ns}
         import src.utils.emit_timing as et
         past_iso = (datetime.now(UTC) - timedelta(milliseconds=50)).isoformat()
-        data = {"status": "done", "_emit_at": {"iso": past_iso, "monotonic_ns": 0}, "_internal": "x"}
+        emit_at = {"iso": past_iso, "monotonic_ns": 0}
+        data = {"status": "done", "_emit_at": emit_at, "_internal": "x"}
 
         observed = []
 

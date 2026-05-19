@@ -1,5 +1,4 @@
 # 멱등성 키 단위 테스트 — 락 획득·중복 방지
-import pytest
 
 
 class TestIdempotencyLock:
