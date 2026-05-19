@@ -72,6 +72,8 @@ class TestLogin:
             json={"email": "fail@example.com", "password": "wrong-password"},
         )
         assert resp.status_code == 401
+        data = resp.get_json()
+        assert data["error"]["code"] == "UNAUTHENTICATED"
 
     def test_login_unknown_email(self, client):
         resp = client.post(
@@ -79,10 +81,14 @@ class TestLogin:
             json={"email": "nobody@example.com", "password": "any-password"},
         )
         assert resp.status_code == 401
+        data = resp.get_json()
+        assert data["error"]["code"] == "UNAUTHENTICATED"
 
     def test_login_missing_fields(self, client):
         resp = client.post("/api/auth/login", json={"email": "test@example.com"})
         assert resp.status_code == 422
+        data = resp.get_json()
+        assert data["error"]["code"] == "VALIDATION_FAILED"
 
 
 class TestLogout:
@@ -120,6 +126,8 @@ class TestLogout:
     def test_logout_without_session_returns_401(self, client):
         resp = client.post("/api/auth/logout", headers={"X-CSRF-Token": "any"})
         assert resp.status_code == 401
+        data = resp.get_json()
+        assert data["error"]["code"] == "UNAUTHENTICATED"
 
 
 class TestMe:
@@ -151,3 +159,5 @@ class TestMe:
     def test_me_without_auth_returns_401(self, client):
         resp = client.get("/api/me")
         assert resp.status_code == 401
+        data = resp.get_json()
+        assert data["error"]["code"] == "UNAUTHENTICATED"

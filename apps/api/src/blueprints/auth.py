@@ -19,11 +19,13 @@ def login():
     password = data.get("password", "")
 
     if not email or not password:
-        return jsonify({"error": "email and password required"}), 422
+        body = {"error": {"code": "VALIDATION_FAILED", "message": "email and password required"}}
+        return jsonify(body), 422
 
     user = User.query.filter_by(email=email).first()
     if not user or not verify_password(password, user.password_hash):
-        return jsonify({"error": "Invalid credentials"}), 401
+        body = {"error": {"code": "UNAUTHENTICATED", "message": "invalid credentials"}}
+        return jsonify(body), 401
 
     r = get_redis()
     sid = create_session(r, user.id)
@@ -58,5 +60,5 @@ def logout():
 def me():
     user = db.session.get(User, g.current_user_id)
     if not user:
-        return jsonify({"error": "User not found"}), 404
+        return jsonify({"error": {"code": "NOT_FOUND", "message": "user not found"}}), 404
     return jsonify({"user": user.to_dict()}), 200
