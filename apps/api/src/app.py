@@ -1,12 +1,14 @@
 # Flask 애플리케이션 팩토리
 import time
+
 from flask import Flask, g, request
+
 from src.config import Config
-from src.extensions import db, init_redis, get_redis
+from src.extensions import db, init_redis
+from src.middleware.request_id import add_request_id_header, inject_request_id
+from src.middleware.session import load_session
 from src.utils.logging import configure_logging, get_logger
 from src.utils.metrics import http_request_duration, http_requests_total
-from src.middleware.request_id import inject_request_id, add_request_id_header
-from src.middleware.session import load_session
 
 logger = get_logger(__name__)
 
@@ -44,17 +46,19 @@ def _register_hooks(app: Flask) -> None:
         route = request.endpoint or "unknown"
         method = request.method
         status = str(response.status_code)
-        http_request_duration.labels(method=method, route=route, status_code=status).observe(elapsed)
+        http_request_duration.labels(  # noqa: E501
+            method=method, route=route, status_code=status
+        ).observe(elapsed)
         http_requests_total.labels(method=method, route=route, status_code=status).inc()
         return response
 
 
 def _register_blueprints(app: Flask) -> None:
     from src.blueprints.auth import bp as auth_bp
-    from src.blueprints.jobs import bp as jobs_bp
     from src.blueprints.events import bp as events_bp
-    from src.blueprints.metrics import bp as metrics_bp
     from src.blueprints.healthz import bp as healthz_bp
+    from src.blueprints.jobs import bp as jobs_bp
+    from src.blueprints.metrics import bp as metrics_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(jobs_bp)

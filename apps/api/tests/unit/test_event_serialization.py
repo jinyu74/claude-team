@@ -1,5 +1,4 @@
 # 이벤트 직렬화 단위 테스트 — SSE 포맷 검증
-import pytest
 import json
 
 
@@ -13,7 +12,9 @@ class TestEventSerialization:
 
     def test_format_sse_event_with_id(self):
         from src.services.sse import format_sse_event
-        result = format_sse_event(event_type="job.done", data={"status": "succeeded"}, event_id="01HXYZ")
+        result = format_sse_event(
+            event_type="job.done", data={"status": "succeeded"}, event_id="01HXYZ"
+        )
         assert "id: 01HXYZ\n" in result
 
     def test_format_sse_event_data_is_valid_json(self):

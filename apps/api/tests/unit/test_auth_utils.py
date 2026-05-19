@@ -1,5 +1,4 @@
 # 인증 유틸 단위 테스트 — 해시·검증·세션 생성
-import pytest
 
 
 class TestPasswordHashing:
@@ -56,13 +55,13 @@ class TestSessionManagement:
         assert result is None
 
     def test_revoke_session_removes_from_redis(self, fake_redis):
-        from src.services.auth import create_session, revoke_session, get_session
+        from src.services.auth import create_session, get_session, revoke_session
         sid = create_session(fake_redis, user_id="user-uuid-3")
         revoke_session(fake_redis, sid, user_id="user-uuid-3")
         assert get_session(fake_redis, sid) is None
 
     def test_revoke_all_sessions_for_user(self, fake_redis):
-        from src.services.auth import create_session, revoke_all_for, get_session
+        from src.services.auth import create_session, get_session, revoke_all_for
         sid1 = create_session(fake_redis, user_id="user-uuid-4")
         sid2 = create_session(fake_redis, user_id="user-uuid-4")
         revoke_all_for(fake_redis, user_id="user-uuid-4")

@@ -1,13 +1,13 @@
 # 인증 엔드포인트 통합 테스트 — 로그인·로그아웃·세션
-import pytest
 
 
 class TestLogin:
     def test_login_success(self, client, app):
+        import uuid
+
         from src.extensions import db
         from src.models.user import User
         from src.services.auth import hash_password
-        import uuid
 
         with app.app_context():
             user = User(
@@ -30,10 +30,11 @@ class TestLogin:
         assert "password_hash" not in str(data)
 
     def test_login_sets_sid_cookie(self, client, app):
+        import uuid
+
         from src.extensions import db
         from src.models.user import User
         from src.services.auth import hash_password
-        import uuid
 
         with app.app_context():
             user = User(
@@ -51,10 +52,11 @@ class TestLogin:
         assert "sid" in resp.headers.get("Set-Cookie", "")
 
     def test_login_wrong_password(self, client, app):
+        import uuid
+
         from src.extensions import db
         from src.models.user import User
         from src.services.auth import hash_password
-        import uuid
 
         with app.app_context():
             user = User(
@@ -85,10 +87,11 @@ class TestLogin:
 
 class TestLogout:
     def test_logout_clears_session(self, client, app):
+        import uuid
+
         from src.extensions import db
         from src.models.user import User
         from src.services.auth import hash_password
-        import uuid
 
         with app.app_context():
             user = User(
@@ -121,10 +124,11 @@ class TestLogout:
 
 class TestMe:
     def test_me_returns_current_user(self, client, app):
+        import uuid
+
         from src.extensions import db
         from src.models.user import User
         from src.services.auth import hash_password
-        import uuid
 
         with app.app_context():
             user = User(

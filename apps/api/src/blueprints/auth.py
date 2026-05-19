@@ -1,10 +1,11 @@
 # 인증 블루프린트 — POST /api/auth/login, POST /api/auth/logout, GET /api/me
-from flask import Blueprint, request, jsonify, make_response, g
+from flask import Blueprint, g, jsonify, make_response, request
+
 from src.extensions import db, get_redis
-from src.models.user import User
-from src.services.auth import verify_password, create_session, revoke_session
 from src.middleware.csrf import generate_csrf_token
-from src.middleware.session import require_auth, load_session
+from src.middleware.session import require_auth
+from src.models.user import User
+from src.services.auth import create_session, revoke_session, verify_password
 
 bp = Blueprint("auth", __name__, url_prefix="/api")
 

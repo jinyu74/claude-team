@@ -1,7 +1,9 @@
 # 테스트 공통 픽스처 — Flask 앱, DB, Redis 목 설정
 import os
-import pytest
+
 import fakeredis
+import pytest
+
 import src.extensions as _ext
 
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
@@ -58,10 +60,11 @@ def client(app):
 @pytest.fixture()
 def auth_headers(client, app):
     """로그인 후 세션 쿠키 + CSRF 헤더 반환."""
+    import uuid
+
     from src.extensions import db
     from src.models.user import User
     from src.services.auth import hash_password
-    import uuid
 
     with app.app_context():
         user = User(

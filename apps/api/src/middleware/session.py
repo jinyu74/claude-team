@@ -1,6 +1,8 @@
 # 세션 검증 미들웨어 — before_request 훅 + require_auth 데코레이터
 import functools
-from flask import g, request, jsonify
+
+from flask import g, jsonify, request
+
 from src.extensions import get_redis
 from src.services.auth import get_session
 

@@ -6,6 +6,14 @@
 
 ## 0. 게이트 절차
 
+> **본 프로젝트 (taskq) 운영 컨텍스트** (2026-05-19, 제임스 공지).
+> - origin: `https://github.com/jinyu74/claude-team.git`
+> - 통합 브랜치: `develop/taskq/v0.1.0`
+> - 태스크 브랜치 명명: `develop/taskq/<slug>` (Jira 키 형식 아님)
+> - **Jira 면제** — 차단 사유·후속 추적의 SSOT 는 본 `review-log.md` (행 표 + 반복 이슈 트래커). 외부 이슈 시스템 참조 없음.
+> - PR 흐름: `develop/taskq/<slug>` → `develop/taskq/v0.1.0` 마다 본 게이트 가동. v0.1.0 → main 머지 PR 은 별도 요청 시.
+> - **PR 본문 의무**: 첫 줄 `slug: <name>` (CTO 추인 2026-05-19). 누락 시 review-log 행 슬러그 컬럼이 "(미상)" 으로 기록되어 추후 보강 요구로 이어짐.
+
 ### 0.1 실행 순서 (정민이 PR 마다)
 
 ```
@@ -70,14 +78,16 @@ PR 본문 코멘트로 다음을 그대로 게시.
 
 > 첫 마크 PR 부터 한 행씩 추가. 인덱스 컬럼은 ID 가 아니라 PR 번호.
 
-| 일자 | PR # | 제목 (요약) | 범위 (Jira) | CI 그린 | 보안 audit | 회귀 | E2E 시나리오 | CRITICAL | HIGH | MEDIUM | LOW | 결론 | 비고 |
+| 일자 | PR # | 제목 (요약) | 브랜치 (`develop/taskq/<slug>`) | CI 그린 | 보안 audit | 회귀 | E2E 시나리오 | CRITICAL | HIGH | MEDIUM | LOW | 결론 | 비고 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 2026-05-19 | #3 | jobs API + worker Phase 1 | 작업 제출·조회 / 워커·Celery | ✅ 58 passed, 82.00% cov / ❌ ruff 66 / ❌ pyright 17 / ❌ pip-audit 미설치 | ❌ A01·A03·A08 위반 다수 | ❌ §1 SM-1/2 envelope 위반, §6 IDEM lock race 누설 | ❌ #2 이벤트 카탈로그 회귀, #6 멱등 race 미수정 | **5** | **8** | **11** | **2** | **차단** | [상세](#pr-3-상세) |
+| 2026-05-19 | #3 | jobs API + worker Phase 1 | _(슬러그 미상 — 마크 재제출 시 명시)_ → `develop/taskq/v0.1.0` | ✅ 58 passed, 82.00% cov / ❌ ruff 66 / ❌ pyright 17 / ❌ pip-audit 미설치 | ❌ A01·A03·A08 위반 다수 | ❌ §1 SM-1/2 envelope 위반, §6 IDEM lock race 누설 | ❌ #2 이벤트 카탈로그 회귀, #6 멱등 race 미수정 | **5** | **8** | **11** | **2** | **차단** | [상세](#pr-3-상세) |
+| 2026-05-19 | #1 | H5 픽스 — `sse_emit_to_receive_seconds` 라벨 `[channel, client_type]` 추가 + `X-Perf-Client: test` 정확 일치 가드 | `develop/taskq/perf-h5-metric-labels` → `develop/taskq/v0.1.0` | ✅ 59 passed, 81.04% cov / ✅ ruff 0 / ✅ pyright 0 | ✅ A01-9 5층 가드 + 4 환경 매트릭스 충족 (운영/평범/임의헤더/test 모두 정상) | — (영역 외) | #2 `_emit_at` strip 정합 ✅ | 0 | 0 | **1** | **2** | **허용** | [상세](#pr-1-상세) |
 
 ### 행 작성 규칙
 
 - "결론" 컬럼은 `허용` / `보류` / `차단` 3종.
-- "비고" 컬럼에는 차단 사유 또는 후속 Sub-task 키.
+- "비고" 컬럼에는 차단 사유 또는 후속 슬러그 (Jira 면제 — 외부 키 없음).
+- "브랜치" 컬럼은 `develop/taskq/<slug>` 형식. PR 본문에 명시 안 됐으면 마크에게 재제출 시 보강 요청.
 - 머지 후에도 행은 보존 (감사 추적).
 
 ---
@@ -110,6 +120,7 @@ PR 본문 코멘트로 다음을 그대로 게시.
 - **H3. 응답 envelope 위반 (전영역)**. ADR §5.5 의 `{"error":{"code":"...","message":"..."}}` 미준수. 현 코드 — `jobs.py:29 {"error":"CSRF token invalid"}` (CSRF_FAILED 코드 없음), `jobs.py:41 {"error":"type is required"}` (VALIDATION_FAILED 없음), `jobs.py:47, 97, 111, 115` 모두 동일. `session.py:24 {"error":"Unauthorized"}` (UNAUTHENTICATED 없음). `events.py:85 {"error":"Not found"}` (NOT_FOUND 없음). 시나리오 1 step 3 의 `error.code == "CSRF_FAILED"` 검증 불통과.
 - **H4. `blueprints/jobs.py:59 / worker/tasks.py:24` — payload 화이트리스트 부재 (A03-3)**. `submit_job_task.apply_async(kwargs=payload)` 가 사용자 입력을 그대로 Celery kwargs 로 전달. payload 가 `{"foo":"bar"}` 같이 unknown 키면 TypeError → 500 (DoS 표면). pydantic 스키마 또는 `extra="forbid"` 검증 필요.
 - **H5. `utils/emit_timing.py` — `X-Perf-Client: test` 헤더 검증 미구현**. ADR §5.4.3 다층 가드 (b) 위반. 현 구현은 `strip_internal_keys` 가 무조건 `_` prefix 키 strip → **카맥의 `sse_emit_to_receive_seconds` 측정 훅 동작 불능** (T6 인터페이스 회귀). 응답 누설은 우연히 0 이지만 ADR Patch 2 의 헤더 정확 일치 검증 부재로 카맥 T6 사양 미달.
+  - **2026-05-19 진단 보정** (CTO 인정, PR #1 게이트 시 확인). 위 라벨 "헤더 검증 미구현" 은 부수 원인만 짚었고, **결정적 원인은 `utils/metrics.py:47-52` 의 `sse_emit_to_receive_seconds` 히스토그램 라벨 `[channel, client_type]` 부재** → 카맥 P-02/P-03 PromQL 쿼리 (`{channel="user|job", client_type="test"}`) 가 time-series 식별 불가. PR #1 (카맥) 가 (a) 라벨 추가 + (b) 헤더 정확 일치 검증 둘 다 동시 해결. 향후 진단 시 ADR §7.2 메트릭 카탈로그까지 cross-check 후 라벨화. 라인 인용 명시 의무 (CTO 권고).
 - **H6. 정적분석 게이트 미통과 (ruff 66 + pyright 17)**. review-log §0.1 게이트상 0 error 필수.
 - **H7. 의존성 audit 미실행 (pip-audit 미설치)**. A06-1 게이트 미실행 = 자동 게이트 누락.
 - **H8. `test_cancel_already_canceled_job_returns_409` — `INVALID_TRANSITION` 코드 필드 미검증**. regression.md SM-1·SM-2 가 CRITICAL 인데 응답 본문 검증이 status code 만. 본 코드 (jobs.py:115) 자체가 envelope·code 둘 다 누락 → 테스트가 통과해도 회귀 검출 불가.
@@ -145,19 +156,89 @@ PR 본문 코멘트로 다음을 그대로 게시.
 
 #### 후속 (마크 측 조치)
 
+> **수정 순서.** CTO 가 [inspection-PR3-gate.md](inspection-PR3-gate.md) §4그룹 우선순위 (A 인터페이스 정합 / B 이벤트 흐름+측정 훅 / C 보안·정합 / D 자동 게이트) 로 분류해 마크에 발송. 같은 모듈을 두 번 건드리지 않도록 그룹 단위 PR 또는 commit. 네이선·카맥에는 H1·H5 별도 통지 완료.
+
 1. **즉시 CRITICAL/HIGH 13건 동일 PR 내 수정** — 본 코멘트 등급 표기 그대로.
 2. **인터페이스 변경 (H1)** — `action=cancel` 유지 원하면 네이선과 ADR Patch 협의 후 라벨 추가. 권장은 ADR §5.1 의 `{status:"canceled"}` 원형 복귀.
 3. **재제출 시 `ruff check --fix` + `pyright src` + `pip-audit` 실행 결과 PR 본문 포함**.
 4. **마크 회신 대기 항목 Q-A1/A2/A4/S1/S2/S3 — 본 PR 차단 사유와 별도이나 Phase 2 진입 전 필수**.
+5. **PR 본문에 브랜치 슬러그 명시** — 본 PR 의 head 브랜치 `develop/taskq/<slug>` 의 슬러그 값을 본문 첫 줄에 적어 review-log 갱신 가능하게.
 
 #### CTO 알림
 
 C1·C2·C5 CRITICAL 3건은 ADR §5.4 / §1.2 / §5.4.3 의 핵심 인터페이스 회귀. team-send 제임스 동시 통지.
 
+---
+
+### PR #1 상세
+
+**결론.** **머지 허용** (CRITICAL 0 / HIGH 0 / MEDIUM 1 / LOW 2). 카맥의 H5 픽스. ADR §7.2 메트릭 라벨 + §5.4.3 다층 가드 정합 충족. PR #3 의 H5 항목 보정 반영 완료.
+
+**자동 게이트.**
+- 단위/통합 ✅ 59 passed (카맥 보고 59 일치)
+- 커버리지 ✅ 81.04% (카맥 보고 81.04% 일치)
+- 정적분석 ✅ ruff 0 errors (변경 4 파일) / pyright 0 errors (변경 3 파일)
+- 의존성 audit — PR #3 와 동일 사유로 pip-audit 미설치 (영역 외, 본 PR 차단 사유 아님)
+
+**ADR §5.4.3 다층 가드 5층 매칭.**
+
+| 가드 | 위치 | 충족 |
+|---|---|---|
+| 1. 워커 부착 (`ENABLE_EMIT_AT=true` 시에만) | `utils/emit_timing.py:5-12` | ✅ 변경 없음 |
+| 2. 클라이언트 식별 (`X-Perf-Client: test` **정확 일치**) | `blueprints/events.py:70` (`request.headers.get("X-Perf-Client") == "test"`) | ✅ 신규 |
+| 3. 직렬화 strip (`_` prefix) | `utils/emit_timing.py:35-42` | ✅ `expose_emit_at` 분기 신규 |
+| 4. 로그 금지 | 변경 3 파일에 logger 호출 없음. `services/sse.py:50` 의 `publish_job_event` 도 로그 미경유 | ✅ |
+| 5. 노출 AND 조건 | `blueprints/events.py:71` (`expose_emit_at = ENABLE_EMIT_AT and is_test_client`) | ✅ |
+
+**A01-9 4 환경 매트릭스 검증** (security-audit.md A09.a 보강 표).
+
+| 환경 | `ENABLE_EMIT_AT` | `X-Perf-Client` | 코드 흐름 | 응답에 `_emit_at` |
+|---|---|---|---|---|
+| 운영 | false (미설정) | 무관 | `maybe_add_emit_at` noop → 페이로드에 키 없음 | ❌ 부재 ✅ |
+| 테스트 + 평범 클라이언트 | true | 헤더 없음 | `is_test_client = (None == "test") = False` → `expose_emit_at = True and False = False` → strip | ❌ 부재 ✅ |
+| 테스트 + 임의 헤더 | true | `prod` (정확 미일치) | `is_test_client = ("prod" == "test") = False` → strip | ❌ 부재 ✅ |
+| 테스트 + 테스트 클라이언트 | true | `test` | `is_test_client = True` → `expose_emit_at = True` → `result[k] = v` | ✅ 노출 ✅ |
+
+**ADR §7.2 메트릭 카탈로그 정합** — `sse_emit_to_receive_seconds` 라벨 `[channel, client_type]`:
+- `utils/metrics.py:50` 정확 일치 ✅
+- 라벨 값 도메인 — `channel` ∈ {"user", "job"} (events.py L106·L117 명시), `client_type` = "test" 만 사용 (테스트 빌드 한정, observe 호출 위치 emit_timing.py L29-31). 카디널리티 = 2 × 1 = 2 time-series. 폭발 위험 0 ✅
+- 카맥 P-02/P-03 PromQL 쿼리 (`{channel="user|job", client_type="test"}`) 가 본 PR 머지 후 time-series 식별 가능 ✅
+
+**발견 사항.**
+
+#### MEDIUM (1건)
+
+- **M1. `tests/unit/test_emit_timing.py` — `expose_emit_at=True` 노출 경로 단위 테스트 부재**. 본 PR 의 핵심 신규 분기 (emit_timing.py:38-39 `result[k] = v` for `_emit_at`) 가 커버리지 미커버 (`emit_timing.py 87% — Missing 32-33, 39`). `expose_emit_at=True` + `is_test_client=True` 시 `_emit_at` 가 결과 dict 에 살아남는지 1줄 assert 추가 권장. 본 PR 내 보정 또는 후속 1줄 PR.
+
+#### LOW (2건)
+
+- **L1. `utils/emit_timing.py:32-33` — `try/except (ValueError, TypeError): pass`**. silent failure 패턴. `_emit_at` 가 손상 타입일 때 측정만 누락 — 응답·보안 영향 없음. 단, 동일 패턴이 다른 영역에 확산되면 [silent-failure-hunter] 회귀 위험. 본 케이스에서는 측정 무시가 합리적 (정상 운영에서 발생 안 함). 메모만.
+- **L2. `blueprints/events.py:114` — `{"error": "Not found"}` envelope 위반 (PR #3 H3 잔존)**. 본 PR 의 직접 변경은 아니나 같은 파일에 잔존. 마크 PR #3 재제출 시 일괄 처리. 본 PR 차단 사유 아님.
+
+**정합성 — 통과 확인 (강점).**
+
+- 라벨 도메인 = ADR §7.2 카탈로그 정확 일치 (`channel`/`client_type`) — 본 PR 의 핵심 픽스
+- `X-Perf-Client: test` **정확 일치** (`== "test"`) — contains 우회 차단 ✅ (security-audit.md A01-9 4 환경 매트릭스의 "임의 헤더" 케이스 충족)
+- AND 조건 (`ENABLE_EMIT_AT and is_test_client`) — events.py L71 단일 지점 ✅
+- `expose_emit_at=False` 가 기본값 — fail-safe 설계 ✅
+- 시그니처 변경 `strip_internal_keys` — caller (events.py:41) 가 4 인자 모두 전달 ✅. 단위 테스트 (test_emit_timing.py:50,67,80) 도 시그니처 정합 ✅
+- 카디널리티 2 — A09 폭발 위험 0 ✅ (카맥 자가 점검 명시 일치)
+
+#### 후속 (카맥 측 조치)
+
+1. M1 1줄 단위 테스트 추가 (본 PR 내 또는 후속 1줄 PR — 정민 선호: 본 PR 내).
+2. 머지 후 `load_tests/locustfile_sse_latency.py` 재실행 → P-02/P-03 PromQL 쿼리 시계열 복구 확인. 본 게이트 통과가 머지 트리거.
+
+#### 정민 진단 보정 (CTO 추인)
+
+PR #3 §H5 항목 본문 끝에 보정 한 줄 추가 (본 review-log 위쪽 §PR #3 상세 §HIGH H5 참조). 향후 메트릭/관측성 영역 진단 시 ADR §7.2 메트릭 카탈로그까지 cross-check 후 라벨화. 라인 인용 의무 (CTO 권고 2026-05-19).
+
 
 ---
 
 ## 2. 영역별 게이트 적용 표
+
+> 본 표의 모든 PR 은 base = `develop/taskq/v0.1.0`, head = `develop/taskq/<slug>`. v0.1.0 → `main` 머지 PR 은 별도 릴리스 게이트.
 
 | 변경 영역 | 보안 audit 필수 절 | 회귀 필수 절 | E2E 필수 시나리오 | 비고 |
 |---|---|---|---|---|
@@ -174,6 +255,8 @@ C1·C2·C5 CRITICAL 3건은 ADR §5.4 / §1.2 / §5.4.3 의 핵심 인터페이�
 ## 3. 반복 이슈 트래커
 
 > 동일 유형 위반이 PR 별로 반복되면 본 섹션에 누적. 임계치(3회) 초과 시 [security-audit.md](security-audit.md) 또는 코드 컨벤션 문서 강화 PR 발행.
+>
+> **3회 누적 자동 강화 권한 (2026-05-19 CTO 위임).** 임계치 도달 시 정민이 별도 승인 없이 강화 PR 을 발행한다. PR 본문에 `누적 3회 (PR #x·#y·#z)` 근거 표기 + 변경 후 본 트래커 행을 line-through 처리.
 
 | 유형 | 누적 | 마지막 발견 PR | 후속 |
 |---|---|---|---|
@@ -217,9 +300,13 @@ C1·C2·C5 CRITICAL 3건은 ADR §5.4 / §1.2 / §5.4.3 의 핵심 인터페이�
 - [x] [regression.md](regression.md) 회귀 매트릭스 — 2026-05-19 완료
 - [x] CTO 답변 4건 (Q-A3, Q-R1, Q-R2, Q-R3) 명세 반영 — 2026-05-19 완료 ([inspection-T5-jungmin.md](inspection-T5-jungmin.md))
 - [x] 카맥과 LOAD-1/2 도구 통일 합의 — **locust 확정** (Q-R3, 2026-05-19)
+- [x] git origin·통합 브랜치 셋업 — `jinyu74/claude-team` + `develop/taskq/v0.1.0` (2026-05-19 13:54, 제임스 공지)
+- [x] ADR-001 Patch 3 머지 (네이선) — `succeeded` retry 불가 명시. SM-4 HIGH 게이트 활성 (2026-05-19)
+- [x] 첫 PR (#3) 머지 게이트 가동 — 차단 결론, review-log §PR #3 상세
 - [ ] 마크 회신 6건 수신 — Q-A1 / Q-A2 / Q-A4 / Q-S1 / Q-S2 / Q-S3 (제임스가 마크에 별도 위임)
-- [ ] ADR-001 Patch 3 머지 (네이선) — `succeeded` retry 불가 명시. SM-4 게이트 HIGH 격상 의존
-- [ ] CI 파이프라인 게이트 등록 (마크 협업, 첫 PR 일정 맞춤) — 대기
+- [ ] 마크 PR #3 재제출 + CRITICAL/HIGH 13건 수정 — 대기 (4그룹 A/B/C/D 순서, [inspection-PR3-gate.md](inspection-PR3-gate.md) §4그룹 우선순위)
+  - **추가 검증 항목**: **E1/E2 (네이선 발견)** 포함 (CTO 통지 2026-05-19 14:54). 정의는 재제출 PR 본문 또는 네이선 직접 send 도착 시 흡수. 정의 도착 전까지 본 행 보존.
+- [ ] CI 파이프라인 게이트 등록 (마크 협업) — 대기
 
 ---
 

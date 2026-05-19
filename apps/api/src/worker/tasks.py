@@ -1,8 +1,10 @@
 # Celery 태스크 정의 — dummy.sleep (테스트용 장시간 작업)
-import time
 import random
+import time
+
 from celery import Task
 from celery.utils.log import get_task_logger
+
 from src.worker.celery_app import celery
 
 logger = get_task_logger(__name__)
@@ -26,7 +28,7 @@ def dummy_sleep(self: Task, seconds: int = 5, fail_prob: float = 0.0) -> dict:
     seconds = max(1, min(seconds, 60))
     logger.info("dummy.sleep started", extra={"task_id": self.request.id, "seconds": seconds})
 
-    if fail_prob > 0 and random.random() < fail_prob:
+    if fail_prob > 0 and random.random() < fail_prob:  # noqa: S311
         raise TransientError(f"Simulated transient error (prob={fail_prob})")
 
     time.sleep(seconds)

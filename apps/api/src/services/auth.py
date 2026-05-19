@@ -1,8 +1,9 @@
 # 인증 서비스 — 세션 생성·조회·폐기, argon2id 비밀번호 해시
 import secrets
+
+import redis as redis_lib
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
-import redis as redis_lib
 
 _ph = PasswordHasher()
 
@@ -37,7 +38,7 @@ def get_session(r: redis_lib.Redis, sid: str) -> str | None:
     if user_id is None:
         return None
     r.expire(key, SESSION_TTL)
-    return user_id.decode() if isinstance(user_id, bytes) else user_id
+    return user_id.decode() if isinstance(user_id, bytes) else user_id  # type: ignore[return-value]
 
 
 def revoke_session(r: redis_lib.Redis, sid: str, user_id: str) -> None:
@@ -49,5 +50,5 @@ def revoke_all_for(r: redis_lib.Redis, user_id: str) -> None:
     sids_key = f"{USER_SIDS_PREFIX}{user_id}"
     sids = r.smembers(sids_key)
     if sids:
-        r.delete(*(f"{SESSION_PREFIX}{s.decode() if isinstance(s, bytes) else s}" for s in sids))
+        r.delete(*(f"{SESSION_PREFIX}{s.decode() if isinstance(s, bytes) else s}" for s in sids))  # type: ignore[union-attr]
     r.delete(sids_key)

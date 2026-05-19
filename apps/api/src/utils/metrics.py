@@ -41,7 +41,7 @@ sse_clients_active = Gauge(
 sse_messages_sent_total = Counter(
     "sse_messages_sent_total",
     "SSE 메시지 전송 총 수",
-    ["event_type"],
+    ["channel", "event"],
 )
 
 sse_emit_to_receive_seconds = Histogram(

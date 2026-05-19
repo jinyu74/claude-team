@@ -1,7 +1,6 @@
 # SSE 연결 통합 테스트 — 연결 수립·핑·인증 검증
-import pytest
 import uuid
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 
 def make_user_and_login(client, app, email="sse@example.com"):
@@ -34,7 +33,7 @@ class TestSSEConnection:
         assert "text/event-stream" in resp.content_type
 
     def test_sse_job_detail_requires_job_ownership(self, client, app):
-        csrf = make_user_and_login(client, app, "sse-own@example.com")
+        make_user_and_login(client, app, "sse-own@example.com")
         fake_job_id = str(uuid.uuid4())
 
         resp = client.get(f"/api/events/jobs/{fake_job_id}")

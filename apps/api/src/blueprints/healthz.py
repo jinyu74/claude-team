@@ -1,5 +1,6 @@
 # 헬스체크 엔드포인트 — GET /healthz
 from flask import Blueprint, jsonify
+
 from src.extensions import db, get_redis
 
 bp = Blueprint("healthz", __name__)
