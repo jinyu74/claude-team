@@ -20,7 +20,7 @@ PAGE_SIZE_DEFAULT = 20
 PAGE_SIZE_MAX = 100
 
 # H4: apply_async 에 허용하는 kwargs 키 목록
-_TASK_KWARGS_WHITELIST = frozenset(["seconds", "fail_prob"])
+_TASK_KWARGS_WHITELIST = frozenset(["seconds", "fail", "transient", "progress"])
 
 
 def _err(code: str, message: str) -> dict:
@@ -75,7 +75,10 @@ def submit_job():
         queue = "high" if priority > 0 else "default"
         # H4: 사용자 페이로드를 whitelist 로 필터링 후 전달
         safe_kwargs = {k: v for k, v in payload.items() if k in _TASK_KWARGS_WHITELIST}
-        result = submit_job_task.apply_async(kwargs=safe_kwargs, queue=queue)  # type: ignore[union-attr]
+        result = submit_job_task.apply_async(  # type: ignore[union-attr]
+            kwargs={"job_id": job.id, "user_id": job.user_id, **safe_kwargs},
+            queue=queue,
+        )
         job.celery_task_id = result.id
         db.session.commit()
 
@@ -155,7 +158,10 @@ def update_job(job_id: str):
         safe_kwargs = {
             k: v for k, v in (new_job.payload or {}).items() if k in _TASK_KWARGS_WHITELIST
         }
-        result = submit_job_task.apply_async(kwargs=safe_kwargs, queue="default")  # type: ignore[union-attr]
+        result = submit_job_task.apply_async(  # type: ignore[union-attr]
+            kwargs={"job_id": new_job.id, "user_id": new_job.user_id, **safe_kwargs},
+            queue="default",
+        )
         new_job.celery_task_id = result.id
         db.session.commit()
         return jsonify(new_job.to_dict()), 201
