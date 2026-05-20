@@ -1,5 +1,4 @@
 # dummy_sleep 워커 단위 테스트 — M7(상태 전이·job_events) + M8(error 마스킹)
-import time
 from unittest.mock import MagicMock, call, patch
 
 import pytest
@@ -215,7 +214,7 @@ class TestErrorMasking:
         long_msg = "x" * 300
         with (
             patch("src.worker.tasks.db") as mock_db,
-            patch("src.worker.tasks.transition_job") as mock_trans,
+            patch("src.worker.tasks.transition_job"),
             patch("src.worker.tasks.PermanentError", side_effect=Exception(long_msg)),
             patch("time.sleep"),
         ):
@@ -250,7 +249,7 @@ class TestErrorMasking:
 
     def test_no_stack_trace_in_error(self, task_self, mock_job):
         """error 값에 Traceback / stack trace 패턴 미포함."""
-        LEAK_PATTERNS = ("Traceback", "/Users/", "/home/", "File \"")
+        leak_patterns = ("Traceback", "/Users/", "/home/", "File \"")
         with (
             patch("src.worker.tasks.db") as mock_db,
             patch("src.worker.tasks.transition_job") as mock_trans,
@@ -266,7 +265,7 @@ class TestErrorMasking:
         for c in mock_trans.call_args_list:
             if c.args[1] == "failed":
                 err = c.kwargs.get("error", "")
-                for pattern in LEAK_PATTERNS:
+                for pattern in leak_patterns:
                     assert pattern not in err, f"leak pattern '{pattern}' in error: {err!r}"
 
     def test_transient_exhausted_error_is_short(self, task_self, mock_job):
