@@ -59,7 +59,9 @@ class TestStatusTransitions:
         ):
             mock_db.session.get.return_value = mock_job
             from src.worker.tasks import dummy_sleep
-            result = dummy_sleep.run.__func__(task_self, job_id="job-aaa", user_id="user-bbb", seconds=1)
+            result = dummy_sleep.run.__func__(
+                task_self, job_id="job-aaa", user_id="user-bbb", seconds=1
+            )
 
         mock_trans.assert_not_called()
         assert result == {"skipped": True}
@@ -72,7 +74,9 @@ class TestStatusTransitions:
         ):
             mock_db.session.get.return_value = None
             from src.worker.tasks import dummy_sleep
-            result = dummy_sleep.run.__func__(task_self, job_id="no-such-job", user_id="u", seconds=1)
+            result = dummy_sleep.run.__func__(
+                task_self, job_id="no-such-job", user_id="u", seconds=1
+            )
 
         mock_trans.assert_not_called()
         assert result == {"skipped": True}
@@ -86,7 +90,9 @@ class TestStatusTransitions:
         ):
             mock_db.session.get.return_value = mock_job
             from src.worker.tasks import dummy_sleep
-            dummy_sleep.run.__func__(task_self, job_id="job-aaa", user_id="user-bbb", seconds=1, fail=True)
+            dummy_sleep.run.__func__(
+                task_self, job_id="job-aaa", user_id="user-bbb", seconds=1, fail=True
+            )
 
         calls = mock_trans.call_args_list
         assert calls[0] == call(mock_job, "running")
@@ -107,7 +113,9 @@ class TestStatusTransitions:
             mock_db.session.get.return_value = mock_job
             from src.worker.tasks import dummy_sleep
             with pytest.raises(type(retry_exc)):
-                dummy_sleep.run.__func__(task_self, job_id="job-aaa", user_id="user-bbb", seconds=1, transient=True)
+                dummy_sleep.run.__func__(
+                    task_self, job_id="job-aaa", user_id="user-bbb", seconds=1, transient=True
+                )
 
         task_self.retry.assert_called_once()
         # running 전이는 1번, failed 전이는 없어야 함
@@ -126,7 +134,9 @@ class TestStatusTransitions:
         ):
             mock_db.session.get.return_value = mock_job
             from src.worker.tasks import dummy_sleep
-            dummy_sleep.run.__func__(task_self, job_id="job-aaa", user_id="user-bbb", seconds=1, transient=True)
+            dummy_sleep.run.__func__(
+                task_self, job_id="job-aaa", user_id="user-bbb", seconds=1, transient=True
+            )
 
         task_self.retry.assert_not_called()
         statuses = [c.args[1] for c in mock_trans.call_args_list]
@@ -148,7 +158,9 @@ class TestStatusTransitions:
             mock_os.environ.get.return_value = "1"  # base = 1s
             from src.worker.tasks import dummy_sleep
             with pytest.raises(type(retry_exc)):
-                dummy_sleep.run.__func__(task_self, job_id="job-aaa", user_id="user-bbb", seconds=1, transient=True)
+                dummy_sleep.run.__func__(
+                    task_self, job_id="job-aaa", user_id="user-bbb", seconds=1, transient=True
+                )
 
         # retries=1 → countdown = 1 * 4^1 = 4.0
         _, kwargs = task_self.retry.call_args
@@ -224,10 +236,15 @@ class TestErrorMasking:
         ):
             mock_db.session.get.return_value = mock_job
             from src.worker.tasks import dummy_sleep
-            dummy_sleep.run.__func__(task_self, job_id="job-aaa", user_id="user-bbb", seconds=1, fail=True)
+            dummy_sleep.run.__func__(
+                task_self, job_id="job-aaa", user_id="user-bbb", seconds=1, fail=True
+            )
 
         failed_call = next(c for c in mock_trans.call_args_list if c.args[1] == "failed")
-        error_val = failed_call.kwargs.get("error") or failed_call.args[2] if len(failed_call.args) > 2 else failed_call.kwargs.get("error")
+        if len(failed_call.args) > 2:
+            error_val = failed_call.kwargs.get("error") or failed_call.args[2]
+        else:
+            error_val = failed_call.kwargs.get("error")
         assert error_val is not None
         assert len(error_val) <= 200
 
@@ -242,7 +259,9 @@ class TestErrorMasking:
             mock_db.session.get.return_value = mock_job
             mock_job.status = "pending"
             from src.worker.tasks import dummy_sleep
-            dummy_sleep.run.__func__(task_self, job_id="job-aaa", user_id="user-bbb", seconds=1, fail=True)
+            dummy_sleep.run.__func__(
+                task_self, job_id="job-aaa", user_id="user-bbb", seconds=1, fail=True
+            )
 
         for c in mock_trans.call_args_list:
             if c.args[1] == "failed":
@@ -261,7 +280,9 @@ class TestErrorMasking:
         ):
             mock_db.session.get.return_value = mock_job
             from src.worker.tasks import dummy_sleep
-            dummy_sleep.run.__func__(task_self, job_id="job-aaa", user_id="user-bbb", seconds=1, transient=True)
+            dummy_sleep.run.__func__(
+                task_self, job_id="job-aaa", user_id="user-bbb", seconds=1, transient=True
+            )
 
         failed_call = next(c for c in mock_trans.call_args_list if c.args[1] == "failed")
         error_val = failed_call.kwargs.get("error")
