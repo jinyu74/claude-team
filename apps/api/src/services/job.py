@@ -77,6 +77,12 @@ def create_job(
     return job, True
 
 
+def record_job_progress(job: Job, user_id: str, percent: float) -> None:
+    """job.progress 이벤트를 발행하고 job_events 행을 기록한다."""
+    payload = {"id": job.id, "percent": percent, "at": _now().isoformat()}
+    _record_event(job, user_id, "job.progress", payload)
+
+
 def transition_job(job: Job, new_status: str, **kwargs) -> Job:
     """잡 상태를 전환하고 SSE 이벤트를 발행한다."""
     if new_status not in JOB_STATUSES:
