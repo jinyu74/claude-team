@@ -17,7 +17,7 @@ _EVENT_PAYLOAD_KEYS: dict[str, tuple[str, ...]] = {
     "job.failed":    ("id", "finished_at", "error"),
     "job.canceled":  ("id", "finished_at"),
     "job.retried":   ("id", "retried_to_job_id"),
-    "job.progress":  ("id", "percent", "at"),
+    "job.progress":  ("jobId", "progress", "at"),
 }
 
 # DB 상태명 → SSE 이벤트명 (ADR §5.4 명칭 준수)
@@ -77,9 +77,9 @@ def create_job(
     return job, True
 
 
-def record_job_progress(job: Job, user_id: str, percent: float) -> None:
+def record_job_progress(job: Job, user_id: str, progress: float) -> None:
     """job.progress 이벤트를 발행하고 job_events 행을 기록한다."""
-    payload = {"id": job.id, "percent": percent, "at": _now().isoformat()}
+    payload = {"jobId": job.id, "progress": progress, "at": _now().isoformat()}
     _record_event(job, user_id, "job.progress", payload)
 
 
