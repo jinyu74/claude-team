@@ -70,7 +70,6 @@ def create_job(
 
     job = Job(id=str(uuid.uuid4()), user_id=user_id, type=job_type, payload=payload, priority=priority, idempotency_key=idempotency_key, status="pending")  # type: ignore[call-arg]  # noqa: E501
     db.session.add(job)
-    db.session.commit()
 
     event_type = "job.submitted"  # C3: job.created → job.submitted
     _record_event(job, user_id, event_type, _event_payload(event_type, job))
