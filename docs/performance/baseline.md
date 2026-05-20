@@ -2,7 +2,7 @@
 
 - 최종 갱신: 2026-05-20 by 카맥
 - 상위: [ADR-001](../decisions/ADR-001-architecture.md), [T6](../tasks/T6-perf-carmack.md)
-- 상태: **초안** (§1 환경 명세 실측 반영 완료 / §4 SSE 측정은 Docker 서비스 기동 후 진행 예정)
+- 상태: **부분 확정** (§3.1 API warm N=10 실측 완료 — budget 초과 3항목 발견 / §3.2 cold·§4 SSE·§5 DB·§6 Celery 는 PR #11 머지 후 진행 예정)
 
 ---
 
@@ -44,18 +44,26 @@
 
 ### 3.1 warm 베이스라인
 
-| 엔드포인트 | 메서드 | p50 | p95 (±SD) | p99 | err% | throughput | budget |
-|---|---|---|---|---|---|---|---|
-| `POST /auth/login` | POST | TBD | TBD | TBD | TBD | TBD | p95 < 200ms |
-| `DELETE /auth/session` | DELETE | TBD | TBD | TBD | TBD | TBD | p95 < 200ms |
-| `GET /api/me` | GET | TBD | TBD | TBD | TBD | TBD | p95 < 200ms |
-| `POST /api/jobs` | POST | TBD | TBD | TBD | TBD | TBD | p95 < 200ms |
-| `GET /api/jobs` (cursor, limit 50) | GET | TBD | TBD | TBD | TBD | TBD | p95 < 200ms |
-| `GET /api/jobs` (첫 페이지) | GET | TBD | TBD | TBD | TBD | TBD | p95 < 200ms |
-| `GET /api/jobs/:id` | GET | TBD | TBD | TBD | TBD | TBD | p95 < 200ms |
-| `PATCH /api/jobs/:id` (cancel) | PATCH | TBD | TBD | TBD | TBD | TBD | p95 < 200ms |
-| `PATCH /api/jobs/:id` (retry) | PATCH | TBD | TBD | TBD | TBD | TBD | p95 < 200ms |
-| `GET /healthz` | GET | TBD | TBD | TBD | TBD | TBD | p95 < 50ms |
+> 측정일: 2026-05-20 / 환경: §1 Docker Compose (Apple M3, macOS 25.0.0) / N=10 / VU=50, ramp 10/s / run-time 30s × 10
+
+| 엔드포인트 | 메서드 | p50 | p95 (±SD) | p99 | err% | throughput | budget | 상태 |
+|---|---|---|---|---|---|---|---|---|
+| `POST /api/auth/login` | POST | 332ms | 415ms (±57ms) | 444ms | 0% | 1.7 rps | p95 < 200ms | ⚠️ **초과** |
+| `DELETE /auth/session` | DELETE | TBD | TBD | TBD | TBD | TBD | p95 < 200ms | 미측정 |
+| `GET /api/me` | GET | TBD | TBD | TBD | TBD | TBD | p95 < 200ms | 미측정 |
+| `POST /api/jobs` | POST | 20ms | 224ms (±91ms) | 605ms | 0% | 31.0 rps | p95 < 200ms | ⚠️ **초과** |
+| `GET /api/jobs` (cursor, limit 50) | GET | 8ms | 99ms (±49ms) | 430ms | 0% | 45.7 rps | p95 < 200ms | ✅ |
+| `GET /api/jobs` (첫 페이지, limit 10) | GET | 8ms | 109ms (±59ms) | 414ms | 0% | 15.3 rps | p95 < 200ms | ✅ |
+| `GET /api/jobs/:id` | GET | 6ms | 88ms (±50ms) | 214ms | 0% | 15.2 rps | p95 < 200ms | ✅ |
+| `GET /api/jobs?status=[status]` | GET | 7ms | 97ms (±46ms) | 379ms | 0% | 30.8 rps | p95 < 200ms | ✅ |
+| `PATCH /api/jobs/:id` (cancel) | PATCH | TBD | TBD | TBD | TBD | TBD | p95 < 200ms | 미측정 |
+| `PATCH /api/jobs/:id` (retry) | PATCH | TBD | TBD | TBD | TBD | TBD | p95 < 200ms | 미측정 |
+| `GET /healthz` | GET | 6ms | 105ms (±50ms) | 320ms | 0% | 15.5 rps | p95 < 50ms | ⚠️ **초과** |
+
+**budget 초과 분석:**
+- `POST /api/auth/login` — argon2id 해싱 비용. work factor 조정 또는 budget 재검토 필요. → 마크 위임.
+- `POST /api/jobs` — p95 224ms (±91ms), SD 큼. DB INSERT + Redis ENQUEUE 경로 지연 스파이크. §5 DB 쿼리 실측 후 병목 특정.
+- `GET /healthz` — p95 105ms, budget 50ms. gunicorn 내부 오버헤드 또는 DB ping 포함 여부 확인 필요.
 
 ### 3.2 cold 베이스라인 (Redis flush + gunicorn 재시작 후 첫 요청)
 
