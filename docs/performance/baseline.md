@@ -1,6 +1,6 @@
 # 성능 베이스라인 — 실시간 작업 큐 대시보드
 
-- 최종 갱신: 2026-05-19 by 카맥
+- 최종 갱신: 2026-05-20 by 카맥
 - 상위: [ADR-001](../decisions/ADR-001-architecture.md), [T6](../tasks/T6-perf-carmack.md)
 - 상태: **초안** (§1 환경 명세 실측 반영 완료 / §4 SSE 측정은 Docker 서비스 기동 후 진행 예정)
 
@@ -23,6 +23,7 @@
 | 측정 도구 | Locust 2.x, `psutil`, `docker stats`, `/metrics` Prometheus 스크래핑 |
 | 데이터 상태 | warm (Redis 캐시·세션 사전 준비 완료, PG 10k jobs 시드) |
 | N | **10** (단발 측정 금지 — §2 참조) |
+| api 호스트 포트 | **5001** (macOS Control Center / AirPlay Receiver가 5000 점유 — PR #9 우회) |
 
 ---
 
@@ -129,25 +130,25 @@ docker compose up -d --scale worker=4 --scale api=1
 
 # 3. warm-up (1분)
 locust -f load_tests/locustfile_warmup.py --headless -u 20 -r 5 \
-  --host http://localhost:5000 --run-time 60s
+  --host http://localhost:5001 --run-time 60s
 
 # 4. API 베이스라인 측정 (N=10 반복, warm)
 for i in $(seq 1 10); do
   locust -f load_tests/locustfile_api.py --headless -u 50 -r 10 \
-    --host http://localhost:5000 --run-time 30s \
+    --host http://localhost:5001 --run-time 30s \
     --csv "results/api_warm_run${i}" --csv-full-history
 done
 
 # 5. SSE 동시 연결 테스트 (1k)
 locust -f load_tests/locustfile_sse_1k.py --headless -u 1000 -r 50 \
-  --host http://localhost:5000 --run-time 300s \
+  --host http://localhost:5001 --run-time 300s \
   --csv "results/sse_1k" --html "results/sse_1k_report.html"
 
 # 6. 메모리 측정 (SSE 1k 유지 중)
 docker stats --no-stream --format "{{.Name}}\t{{.MemUsage}}" > results/mem_sse_1k.txt
 
 # 7. Prometheus 메트릭 스냅샷
-curl -s http://localhost:5000/metrics > results/metrics_snapshot_$(date +%s).txt
+curl -s http://localhost:5001/metrics > results/metrics_snapshot_$(date +%s).txt
 ```
 
 ---
